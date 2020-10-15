@@ -89,6 +89,132 @@ Godunov::ComputeAofs ( MultiFab& aofs, const int aofs_comp, const int ncomp,
 
 }
 
+#ifdef PLM_USE_EFIELD
+void
+Godunov::ComputeAofsEF ( MultiFab& aofs, const int aofs_comp, const int ncomp,
+                         MultiFab const& state, const int state_comp,
+                         AMREX_D_DECL( MultiFab const& umac,
+                                       MultiFab const& vmac,
+                                       MultiFab const& wmac),
+                         AMREX_D_DECL( MultiFab const& udrift,
+                                       MultiFab const& vdrift,
+                                       MultiFab const& wdrift),
+                         AMREX_D_DECL( MultiFab& xedge,
+                                       MultiFab& yedge,
+                                       MultiFab& zedge),
+                         const int  edge_comp,
+                         const bool known_edgestate,
+                         AMREX_D_DECL( MultiFab& xfluxes,
+                                       MultiFab& yfluxes,
+                                       MultiFab& zfluxes),
+                         int fluxes_comp,
+                         MultiFab const& fq,
+                         const int fq_comp,
+                         MultiFab const& divu,
+                         Vector<BCRec> const& bcs,
+                         Geometry const& geom,
+                         Gpu::DeviceVector<int>& iconserv,
+                         const Real dt,
+                         const bool use_ppm,
+                         const bool use_forces_in_trans,
+                         const bool is_velocity  )
+{
+    BL_PROFILE("Godunov::ComputeAofsEF()");
+
+    FArrayBox Ueff[AMREX_SPACEDIM];
+
+    //FIXME - check on adding tiling here
+    for (MFIter mfi(aofs); mfi.isValid(); ++mfi)
+    {
+
+        const Box& bx   = mfi.tilebox();
+        Box const& bxg1 = amrex::grow(bx,1);
+
+        FArrayBox tmpfab(amrex::grow(bx,1),  (4*AMREX_SPACEDIM + 2)*ncomp);
+
+        for ( int n = 0; n < ncomp; n++ ) {
+           //
+           // Get handlers to Array4
+           //
+           AMREX_D_TERM( const auto& fx = xfluxes.array(mfi,fluxes_comp+n);,
+                         const auto& fy = yfluxes.array(mfi,fluxes_comp+n);,
+                         const auto& fz = zfluxes.array(mfi,fluxes_comp+n););
+
+           AMREX_D_TERM( const auto& xed = xedge.array(mfi,edge_comp+n);,
+                         const auto& yed = yedge.array(mfi,edge_comp+n);,
+                         const auto& zed = zedge.array(mfi,edge_comp+n););
+
+           AMREX_D_TERM( const auto& u = umac.const_array(mfi);,
+                         const auto& v = vmac.const_array(mfi);,
+                         const auto& w = wmac.const_array(mfi););
+
+           // Get the effective velocities
+           AMREX_D_TERM( Ueff[0].resize(umac[mfi].box(),1);,
+                         Ueff[1].resize(vmac[mfi].box(),1);,
+                         Ueff[2].resize(wmac[mfi].box(),1););
+           AMREX_D_TERM( const auto& udr = udrift.const_array(mfi,n);,
+                         const auto& vdr = vdrift.const_array(mfi,n);,
+                         const auto& wdr = wdrift.const_array(mfi,n););
+           AMREX_D_TERM( const auto& uef = Ueff[0].array();,
+                         const auto& vef = Ueff[1].array();,
+                         const auto& wef = Ueff[2].array(););
+           amrex::ParallelFor(umac[mfi].box(), [uef,udr,u]
+           AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+              uef(i,j,k) = u(i,j,k) + udr(i,j,k);
+           });
+           amrex::ParallelFor(vmac[mfi].box(), [vef,vdr,v]
+           AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+              vef(i,j,k) = v(i,j,k) + vdr(i,j,k);
+           });
+#if (AMREX_SPACEDIM == 3)
+           amrex::ParallelFor(wmac[mfi].box(), [wef,wdr,w]
+           AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+              wef(i,j,k) = w(i,j,k) + wdr(i,j,k);
+           });
+#endif
+
+           // Get a local single component version of iconserv
+           Gpu::DeviceVector<int> iconserv_comp;
+           iconserv_comp.resize(1, 0);
+           iconserv_comp[0] = iconserv[n];
+
+           if (not known_edgestate)
+           {
+               ComputeEdgeState( bx, 1,
+                                 state.array(mfi,state_comp+n),
+                                 AMREX_D_DECL( xed, yed, zed ),
+                                 AMREX_D_DECL( uef, vef, wef ),
+                                 divu.array(mfi),
+                                 fq.array(mfi,fq_comp+n),
+                                 geom, dt, &bcs[n],
+                                 iconserv_comp.data(),
+                                 use_ppm,
+                                 use_forces_in_trans,
+                                 is_velocity );
+           }
+
+           ComputeFluxes( bx, AMREX_D_DECL( fx, fy, fz ),
+                          AMREX_D_DECL( uef, vef, wef ),
+                          AMREX_D_DECL( xed, yed, zed ),
+                          geom, 1 );
+
+           // Scalar used with EF are conserved so the velocity is not used
+           ComputeDivergence( bx,
+                              aofs.array(mfi,aofs_comp+n),
+                              AMREX_D_DECL( fx, fy, fz ),
+                              AMREX_D_DECL( xed, yed, zed ),
+                              AMREX_D_DECL( u, v, w ),
+                              1, geom, iconserv_comp.data() );
+        } // End loop on ncomp
+
+        Gpu::streamSynchronize();  // otherwise we might be using too much memory
+    }
+
+}
+#endif
 
 
 void
