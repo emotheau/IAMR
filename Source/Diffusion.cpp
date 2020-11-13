@@ -268,7 +268,7 @@ Diffusion::diffuse_scalar (const Vector<MultiFab*>&  S_old,
                            const MultiFab* const*    betanp1,
                            int                       betaComp,
                            const IntVect&            cratio,
-                           const BCRec&              bc,
+                           const Vector<BCRec>&      bcs,
                            const Geometry&           geom,
                            const SolveMode&          solve_mode,
                            bool                      add_old_time_divFlux,
@@ -376,12 +376,12 @@ Diffusion::diffuse_scalar (const Vector<MultiFab*>&  S_old,
     mgnp1.setMaxFmgIter(max_fmg_iter);
     mgnp1.setVerbose(verbose);
 
-    setDomainBC(mlmg_lobc, mlmg_hibc, bc); // Same for all comps, by assumption
-    opn.setDomainBC(mlmg_lobc, mlmg_hibc);
-    opnp1.setDomainBC(mlmg_lobc, mlmg_hibc);
 
     for (int icomp=0; icomp<num_comp; ++icomp)
     {
+       setDomainBC(mlmg_lobc, mlmg_hibc, bcs[icomp]); // Same for all comps, by assumption
+       opn.setDomainBC(mlmg_lobc, mlmg_hibc);
+       opnp1.setDomainBC(mlmg_lobc, mlmg_hibc);
        if (verbose)
        {
           amrex::Print() << "diffusing scalar "<< icomp+1 << " of " << num_comp << "\n"

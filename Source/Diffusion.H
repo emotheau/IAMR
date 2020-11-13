@@ -78,7 +78,7 @@ public:
 			 const amrex::MultiFab* const*          betanp1,
 			 int                                    betaComp,
 			 const amrex::IntVect&                  cratio,
-			 const amrex::BCRec&                    bc,
+          const amrex::Vector<amrex::BCRec>&     bcs,
 			 const amrex::Geometry&                 geom,
 			 const SolveMode&                       solve_mode = ONEPASS,
 			 bool                                   add_old_time_divFlux = true,
