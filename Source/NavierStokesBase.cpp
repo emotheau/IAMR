@@ -1869,8 +1869,6 @@ NavierStokesBase::init ()
     FillCoarsePatch(S_new,0,cur_time,State_Type,0,NUM_STATE);
     FillCoarsePatch(P_new,0,cur_pres_time,Press_Type,0,1);
 
-    initOldPress();
-
     //
     // Get best coarse divU and dSdt data.
     //
@@ -1951,19 +1949,6 @@ NavierStokesBase::initialTimeStep ()
     amrex::Print() << "Multiplying dt by init_shrink: dt = "
 		   << returnDt << '\n';
     return returnDt;
-}
-
-//
-// Since the pressure solver always stores its estimate of the
-// pressure solver in Pnew, we need to copy it to Pold at the start.
-//
-void
-NavierStokesBase::initOldPress ()
-{
-    MultiFab& P_new = get_new_data(Press_Type);
-    MultiFab& P_old = get_old_data(Press_Type);
-
-    MultiFab::Copy(P_old, P_new, 0, 0, P_old.nComp(), P_old.nGrow());
 }
 
 void
@@ -2670,7 +2655,6 @@ NavierStokesBase::resetState (Real time,
     state[State_Type].reset();
     state[State_Type].setTimeLevel(time,dt_old,dt_new);
 
-    initOldPress();
     state[Press_Type].setTimeLevel(time-dt_old,dt_old,dt_new);
     //
     // Reset state types for divu not equal to zero.
