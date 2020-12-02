@@ -380,15 +380,6 @@ NavierStokesBase::~NavierStokesBase ()
 }
 
 void
-NavierStokesBase::allocOldData ()
-{
-    bool init_pres = !(state[Press_Type].hasOldData());
-    AmrLevel::allocOldData();
-    if (init_pres)
-        initOldPress();
-}
-
-void
 NavierStokesBase::variableCleanUp ()
 {
     desc_lst.clear();

@@ -65,8 +65,6 @@ public:
     //    amrex::AmrLevel virtual functions                                          //
     ////////////////////////////////////////////////////////////////////////////
 
-    virtual void allocOldData () override;
-
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
                              amrex::VisMF::How         how = amrex::VisMF::OneFilePerCPU,
