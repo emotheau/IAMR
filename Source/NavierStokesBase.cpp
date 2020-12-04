@@ -1868,8 +1868,8 @@ NavierStokesBase::init ()
     //
     FillCoarsePatch(S_new,0,cur_time,State_Type,0,NUM_STATE);
     FillCoarsePatch(P_new,0,cur_pres_time,Press_Type,0,1);
-
-    initOldPress();
+    //FIXME
+    //initOldPress();
 
     //
     // Get best coarse divU and dSdt data.
