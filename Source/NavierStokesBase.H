@@ -522,6 +522,7 @@ public:
     // Compile p_avg in advance.
     //
     void incrPAvg ();
+    void initOldPress (); // Initialize old pressure with new
     void zeroNewPress (); // Set new pressure to zero
     void zeroOldPress (); // Set old pressure to zero
     //
