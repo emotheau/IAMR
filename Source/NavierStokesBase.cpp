@@ -278,7 +278,7 @@ NavierStokesBase::NavierStokesBase (Amr&            papa,
     init_eb(level_geom, bl, dm);
 
     //fixme? not 100% sure this is the right place
-    gradp.reset(new MultiFab(grids,dmap,BL_SPACEDIM,1, MFInfo(), Factory()));
+    gradp.reset(new MultiFab(grids,dmap,BL_SPACEDIM,0, MFInfo(), Factory()));
     gradp->setVal(0.);
 
     //FIXME --- this fn is really similar to restart()... work on that later
