@@ -1,3 +1,7 @@
+//fixme, for writesingle level plotfile
+#include<AMReX_PlotFileUtil.H>
+//
+
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
@@ -128,7 +132,11 @@ NavierStokes::initData ()
                        ARLIM(p_lo), ARLIM(p_hi),
                        dx,gridloc.lo(),gridloc.hi() );
     }
-
+    //
+    // Initialize GradP
+    //
+    computeGradP(state[Press_Type].curTime());
+    
 #ifdef AMREX_USE_EB
     set_body_state(S_new);
 #endif
@@ -312,6 +320,7 @@ NavierStokes::advance (Real time,
 
     //
     // Compute traced states for normal comp of velocity at half time level.
+    // Returns best estimate for new timestep.
     //
     Real dt_test = predict_velocity(dt);
     //
@@ -403,7 +412,9 @@ NavierStokes::advance (Real time,
         if (verbose)
         {
             Print() << "NavierStokes::advance(): before nodal projection " << std::endl;
-            printMaxValues();
+            printMaxVel();
+	    // New P, Gp get updated in the projector (below). Check old here.
+	    printMaxGp(false);
         }
 
         //
@@ -429,7 +440,7 @@ NavierStokes::advance (Real time,
 
     if (verbose)
     {
-        Print() << "NavierStokes::advance(): after velocity update" << std::endl;
+        Print() << "NavierStokes::advance(): exiting." << std::endl;
         printMaxValues();
     }
 
@@ -524,10 +535,9 @@ NavierStokes::predict_velocity (Real  dt)
     //
     // Non-EB version
     //
-    const int ngrow = 1;
-    MultiFab Gp(grids, dmap, AMREX_SPACEDIM,ngrow);
-    getGradP(Gp, prev_pres_time);
+    MultiFab& Gp = get_old_data(Gradp_Type);
 
+    const int ngrow = 1;
     MultiFab forcing_term( grids, dmap, AMREX_SPACEDIM, ngrow );
 
     //
@@ -1445,37 +1455,15 @@ NavierStokes::writePlotFile (const std::string& dir,
     //
     // Cull data from derived variables.
     //
-    Real plot_time;
-
     if (derive_names.size() > 0)
     {
 	for (std::list<std::string>::const_iterator it = derive_names.begin(), end = derive_names.end();
              it != end;
              ++it)
 	{
-            if (*it == "avg_pressure" ||
-                *it == "gradpx"       ||
-                *it == "gradpy"       ||
-                *it == "gradpz")
-            {
-                if (state[Press_Type].descriptor()->timeType() ==
-                    StateDescriptor::Interval)
-                {
-                    plot_time = cur_time;
-                }
-                else
-                {
-                    int f_lev = parent->finestLevel();
-                    plot_time = getLevel(f_lev).state[Press_Type].curTime();
-                }
-            }
-            else
-            {
-                plot_time = cur_time;
-            }
 	    const DeriveRec* rec = derive_lst.get(*it);
 	    ncomp = rec->numDerive();
-	    auto derive_dat = derive(*it,plot_time,nGrow);
+	    auto derive_dat = derive(*it,cur_time,nGrow);
 	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,ncomp,nGrow);
 	    cnt += ncomp;
 	}
@@ -1675,7 +1663,7 @@ NavierStokes::post_init_press (Real&        dt_init,
             MultiFab& S_old = get_old_data(State_Type);
             MultiFab::Xpay(S_new, dt_init, S_old, Xvel, Xvel, AMREX_SPACEDIM, 0);
 
-            Print() << "After nodal projection:" << std::endl;
+            Print() << "After sync projection and avgDown:" << std::endl;
             printMaxValues();
         }
 
@@ -2134,25 +2122,12 @@ NavierStokes::avgDown ()
     if (level == parent->finestLevel())
         return;
 
-    NavierStokes&   fine_lev = getLevel(level+1);
+    auto&   fine_lev = getLevel(level+1);
     //
-    // Average down the states at the new time.
+    // Average down the State and Pressure at the new time.
     //
-    MultiFab& S_crse = get_new_data(State_Type);
-    MultiFab& S_fine = fine_lev.get_new_data(State_Type);
+    avgDown_StatePress();
 
-    average_down(S_fine, S_crse, 0, S_crse.nComp());
-
-    //
-    // Now average down pressure over time n-(n+1) interval.
-    //
-    MultiFab&       P_crse      = get_new_data(Press_Type);
-    MultiFab&       P_fine_init = fine_lev.get_new_data(Press_Type);
-    MultiFab&       P_fine_avg  = fine_lev.p_avg;
-    MultiFab&       P_fine      = initial_step ? P_fine_init : P_fine_avg;
-
-    // NOTE: this fills ghost cells, but amrex::average_down does not.
-    amrex::average_down_nodal(P_fine,P_crse,fine_ratio);
     //
     // Next average down divu and dSdT at new time.
     //
@@ -2169,13 +2144,6 @@ NavierStokes::avgDown ()
         MultiFab& Dsdt_fine = fine_lev.get_new_data(Dsdt_Type);
 
 	average_down(Dsdt_fine, Dsdt_crse, 0, 1);
-    }
-    //
-    // Fill rho_ctime at the current and finer levels with the correct data.
-    //
-    for (int lev = level; lev <= parent->finestLevel(); lev++)
-    {
-        getLevel(lev).make_rho_curr_time();
     }
 }
 
