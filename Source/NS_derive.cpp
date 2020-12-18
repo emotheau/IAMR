@@ -29,7 +29,6 @@ void der_vel_avg (const Box& bx, FArrayBox& derfab, int dcomp, int ncomp,
     amrex::ParallelFor(bx, BL_SPACEDIM, [inv_time,der,in_dat]
     AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-amrex::Print() << inv_time;
         der(i,j,k,n) = in_dat(i,j,k,n) * inv_time;
         der(i,j,k,n+BL_SPACEDIM) = sqrt(in_dat(i,j,k,n+BL_SPACEDIM) * inv_time);
     });
