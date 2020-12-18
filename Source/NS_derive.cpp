@@ -18,13 +18,18 @@ void der_vel_avg (const Box& bx, FArrayBox& derfab, int dcomp, int ncomp,
     AMREX_ASSERT(ncomp == BL_SPACEDIM*2);
     auto const in_dat = datfab.array();
     auto          der = derfab.array(dcomp);
-
-
-    amrex::Real inv_time = 1.0 / NavierStokesBase::time_avg[level];
+    amrex::Real inv_time;
+  
+    if (NavierStokesBase::time_avg[level] == 0){
+      inv_time = 1.0;
+    }else{
+      inv_time = 1.0 / NavierStokesBase::time_avg[level];
+    }
 
     amrex::ParallelFor(bx, BL_SPACEDIM, [inv_time,der,in_dat]
     AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
+amrex::Print() << inv_time;
         der(i,j,k,n) = in_dat(i,j,k,n) * inv_time;
         der(i,j,k,n+BL_SPACEDIM) = sqrt(in_dat(i,j,k,n+BL_SPACEDIM) * inv_time);
     });
