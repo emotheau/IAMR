@@ -261,6 +261,12 @@ NavierStokesBase::NavierStokesBase (Amr&            papa,
     //
     state[Press_Type].allocOldData();
     state[Gradp_Type].allocOldData();
+
+    if (avg_interval > 0){
+      state[Average_Type].allocOldData();
+      MultiFab& Savg   = get_old_data(Average_Type);
+      Savg.setVal(0.);
+    }
     //
     // Alloc space for density and temporary pressure variables.
     //
@@ -1866,6 +1872,13 @@ NavierStokesBase::init ()
     // need to think about if we need the old GP created too....
     MultiFab& Gp_new = get_new_data(Gradp_Type);
     FillCoarsePatch(Gp_new,0,cur_pres_time,Gradp_Type,0,AMREX_SPACEDIM,Gp_new.nGrow());
+
+    if (avg_interval > 0){    
+      initOldFromNew(Average_Type);
+      MultiFab& Save_new = get_new_data(Average_Type);
+      FillCoarsePatch(Save_new,0,cur_time,Average_Type,0,AMREX_SPACEDIM*2,0);
+    }
+
     //
     // Get best coarse divU and dSdt data.
     //
@@ -2721,6 +2734,12 @@ NavierStokesBase::resetState (Real time,
     //
     initOldFromNew(Gradp_Type);
     state[Gradp_Type].setTimeLevel(time-dt_old,dt_old,dt_new);
+
+    if (avg_interval > 0){
+      initOldFromNew(Average_Type);
+      state[Average_Type].setTimeLevel(time-dt_old,dt_old,dt_new);
+    }
+
     //
     // Reset state types for divu not equal to zero.
     //
@@ -3101,6 +3120,11 @@ NavierStokesBase::setTimeLevel (Real time,
     state[Press_Type].setTimeLevel(time-dt_old,dt_old,dt_old);
 
     state[Gradp_Type].setTimeLevel(time-dt_old,dt_old,dt_old);
+
+    if (avg_interval > 0){
+      state[Average_Type].setTimeLevel(time-dt_old,dt_old,dt_old);
+    }
+
 }
 
 void
