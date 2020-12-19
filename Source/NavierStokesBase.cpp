@@ -126,7 +126,6 @@ int  NavierStokesBase::avg_interval                    = 0;
 int  NavierStokesBase::additional_state_types_initialized = 0;
 int  NavierStokesBase::Divu_Type                          = -1;
 int  NavierStokesBase::Dsdt_Type                          = -1;
-int  NavierStokesBase::Average_Type                          = -1;
 int  NavierStokesBase::num_state_type                     = 2;
 int  NavierStokesBase::have_divu                          = 0;
 int  NavierStokesBase::have_dsdt                          = 0;
@@ -163,6 +162,7 @@ std::vector<Real> NavierStokesBase::body_state;
 // For restart, is GradP in checkpoint file 
 //
 bool NavierStokesBase::gradp_in_checkpoint = true;
+bool NavierStokesBase::average_in_checkpoint = true;
 
 
 namespace
@@ -2772,6 +2772,13 @@ NavierStokesBase::set_state_in_checkpoint (Vector<int>& state_in_checkpoint)
   state_in_checkpoint[Gradp_Type] = 0;
 
   gradp_in_checkpoint = false;
+
+//  if (avg_interval > 0){
+    state_in_checkpoint[Average_Type] = 0;
+    average_in_checkpoint = false;
+//  }
+
+
 }
 
 void
@@ -2801,6 +2808,15 @@ NavierStokesBase::restart (Amr&          papa,
       state[Gradp_Type].allocOldData();
       computeGradP(prev_time);
     }
+
+    if ( !average_in_checkpoint )
+    {
+      Print()<<"WARNING! Average not found in checkpoint file."
+             <<std::endl;
+       amrex::Abort();
+    }
+ 
+
 
     //
     // Build metric coefficients for RZ calculations.
