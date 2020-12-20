@@ -43,6 +43,8 @@ amr.blocking_factor = 8      # block factor in grid generation
 
 ns.do_vorticity_ref = 1
 
+ns.do_vorticity_ref = 1
+
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #              GEOMETRY                 #
 #.......................................#
