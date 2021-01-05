@@ -73,7 +73,7 @@ Godunov::ComputeAofs ( MultiFab& aofs, const int aofs_comp, const int ncomp,
                        AMREX_D_DECL( xed, yed, zed ),
                        geom, ncomp );
 
-	ComputeDivergence( bx,
+	     ComputeDivergence( bx,
                            aofs.array(mfi,aofs_comp),
                            AMREX_D_DECL( fx, fy, fz ),
                            AMREX_D_DECL( xed, yed, zed ),
@@ -109,7 +109,7 @@ Godunov::ComputeAofsEF ( MultiFab& aofs, const int aofs_comp, const int ncomp,
                          MultiFab const& fq,
                          const int fq_comp,
                          MultiFab const& divu,
-                         Vector<BCRec> const& bcs,
+                         BCRec const* d_bc,
                          Geometry const& geom,
                          Gpu::DeviceVector<int>& iconserv,
                          const Real dt,
@@ -179,6 +179,8 @@ Godunov::ComputeAofsEF ( MultiFab& aofs, const int aofs_comp, const int ncomp,
            iconserv_comp.resize(1, 0);
            iconserv_comp[0] = iconserv[n];
 
+           BCRec const d_bc_comp = d_bc[n];
+
            if (not known_edgestate)
            {
                ComputeEdgeState( bx, 1,
@@ -187,9 +189,9 @@ Godunov::ComputeAofsEF ( MultiFab& aofs, const int aofs_comp, const int ncomp,
                                  AMREX_D_DECL( uef, vef, wef ),
                                  divu.array(mfi),
                                  fq.array(mfi,fq_comp+n),
-                                 geom, dt, &bcs[n],
+                                 geom, dt, &d_bc_comp,
                                  iconserv_comp.data(),
-                                 use_ppm,
+                                 use_ppm, 
                                  use_forces_in_trans,
                                  is_velocity );
            }

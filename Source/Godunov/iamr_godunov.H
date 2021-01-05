@@ -52,7 +52,7 @@ namespace Godunov {
                          amrex::MultiFab const& fq,
                          const int fq_comp,
                          amrex::MultiFab const& divu,
-                         amrex::Vector<amrex::BCRec> const& bcs,
+                         amrex::BCRec const* d_bc,
                          amrex::Geometry const& geom,
                          amrex::Gpu::DeviceVector<int>& iconserv,
                          const amrex::Real dt,
