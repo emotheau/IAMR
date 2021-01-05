@@ -137,6 +137,10 @@ public:
     void scalar_advection (amrex::Real dt,
                            int  first_scalar,
                            int  last_scalar);
+    //
+    void scalar_diffusion_update (amrex::Real dt,
+                                  int  first_scalar,
+                                  int  last_scalar);
 
 protected:
 
@@ -173,6 +177,13 @@ protected:
     //    NavierStokes protected static functions                             //
     ////////////////////////////////////////////////////////////////////////////
 
+    virtual void errorEst (amrex::TagBoxArray& tags,
+                           int                 clearval,
+                           int                 tagval,
+                           amrex::Real         time,
+                           int                 n_error_buf,
+                           int                 ngrow) override;
+
     static void Initialize ();   // Read input file
     static void Finalize ();
 
@@ -208,14 +219,11 @@ private:
                         int  first_scalar,
                         int  last_scalar);
     //
-    void scalar_diffusion_update (amrex::Real dt,
-                                  int  first_scalar,
-                                  int  last_scalar);
-    //
     // Define error estimators
     //
     static void error_setup ();
 
+    static amrex::Vector<amrex::AMRErrorTag> errtags;
 };
 
 #endif /*_NavierStokes_H_*/

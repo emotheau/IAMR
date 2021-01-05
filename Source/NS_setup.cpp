@@ -6,8 +6,10 @@
 #include <AMReX_ErrorList.H>
 #include <PROB_NS_F.H>
 #include <DERIVE_F.H>
+#include <NS_derive.H>
 #include <NS_error_F.H>
 #include <AMReX_FArrayBox.H>
+#include <AMReX_ParmParse.H>
 
 using namespace amrex;
 
@@ -136,7 +138,31 @@ set_dsdt_bc(BCRec& bc, const BCRec& phys_bc)
     }
 }
 
+static
+void
+set_average_bc(BCRec& bc, const BCRec& phys_bc)
+{
+    const int* lo_bc = phys_bc.lo();
+    const int* hi_bc = phys_bc.hi();
+    for (int i = 0; i < BL_SPACEDIM; i++)
+    {
+        bc.setLo(i,average_bc[lo_bc[i]]);
+        bc.setHi(i,average_bc[hi_bc[i]]);
+    }
+}
+
+
+
 typedef StateDescriptor::BndryFunc BndryFunc;
+
+//
+// Get EB-aware interpolater when needed
+//
+#ifdef AMREX_USE_EB  
+  static auto& cc_interp = eb_cell_cons_interp;
+#else
+  static auto& cc_interp = cell_cons_interp;
+#endif
 
 void
 NavierStokes::variableSetUp ()
@@ -179,18 +205,11 @@ NavierStokes::variableSetUp ()
     //
     // **************  DEFINE VELOCITY VARIABLES  ********************
     //
-    // FIXME? - cribbed from CNS
-#ifdef AMREX_USE_EB
     bool state_data_extrap = false;
     bool store_in_checkpoint = true;
     desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
     			   StateDescriptor::Point,NUM_GROW,NUM_STATE,
-    			   &eb_cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#else
-    desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
-                           StateDescriptor::Point,1,NUM_STATE,
-                           &cell_cons_interp);
-#endif
+    			   &cc_interp,state_data_extrap,store_in_checkpoint);
     
     set_x_vel_bc(bc,phys_bc);
     desc_lst.setComponent(State_Type,Xvel,"x_velocity",bc,BndryFunc(FORT_XVELFILL));
@@ -268,30 +287,12 @@ NavierStokes::variableSetUp ()
     //
     // ---- pressure
     //
-#if 1
     desc_lst.addDescriptor(Press_Type,IndexType::TheNodeType(),
                            StateDescriptor::Interval,1,1,
                            &node_bilinear_interp);
 
     set_pressure_bc(bc,phys_bc);
     desc_lst.setComponent(Press_Type,Pressure,"pressure",bc,BndryFunc(FORT_PRESFILL));
-#else
-    desc_lst.addDescriptor(Press_Type,IndexType::TheNodeType(),
-                           StateDescriptor::Point,1,1,
-                           &node_bilinear_interp,true);
-
-    set_pressure_bc(bc,phys_bc);
-    desc_lst.setComponent(Press_Type,Pressure,"pressure",bc,BndryFunc(FORT_PRESFILL));
-    //
-    // ---- time derivative of pressure
-    //
-    Dpdt_Type = desc_lst.length();
-    desc_lst.addDescriptor(Dpdt_Type,IndexType::TheNodeType(),
-                           StateDescriptor::Interval,1,1,
-                           &node_bilinear_interp);
-    set_pressure_bc(bc,phys_bc);
-    desc_lst.setComponent(Dpdt_Type,Dpdt,"dpdt",bc,BndryFunc(FORT_PRESFILL));
-#endif
 
     if (do_temp)
     {
@@ -300,7 +301,7 @@ NavierStokes::variableSetUp ()
 	int nGrowDivu = 1;
 	desc_lst.addDescriptor(Divu_Type,IndexType::TheCellType(),
                                StateDescriptor::Point,nGrowDivu,1,
-			       &cell_cons_interp);
+			       &cc_interp);
 	set_divu_bc(bc,phys_bc);
 	desc_lst.setComponent(Divu_Type,Divu,"divu",bc,BndryFunc(FORT_DIVUFILL));
 	
@@ -309,10 +310,47 @@ NavierStokes::variableSetUp ()
 	int nGrowDsdt = 0;
 	desc_lst.addDescriptor(Dsdt_Type,IndexType::TheCellType(),
                                StateDescriptor::Point,nGrowDsdt,1,
-			       &cell_cons_interp);
+			       &cc_interp);
 	set_dsdt_bc(bc,phys_bc);
 	desc_lst.setComponent(Dsdt_Type,Dsdt,"dsdt",bc,BndryFunc(FORT_DSDTFILL));
     }
+
+    if (NavierStokesBase::avg_interval > 0)
+    { 
+      Average_Type = desc_lst.size();
+      bool state_data_extrap = false;
+      bool store_in_checkpoint = true;
+      desc_lst.addDescriptor(Average_Type,IndexType::TheCellType(),
+                             StateDescriptor::Point,0,BL_SPACEDIM*2,
+                             &cc_interp,state_data_extrap,store_in_checkpoint);
+
+      set_average_bc(bc,phys_bc);
+      desc_lst.setComponent(Average_Type,Xvel,"xvel_avg_dummy",bc,BndryFunc(FORT_DSDTFILL));
+      desc_lst.setComponent(Average_Type,Xvel+BL_SPACEDIM,"xvel_rms_dummy",bc,BndryFunc(FORT_DSDTFILL));
+      desc_lst.setComponent(Average_Type,Yvel,"yvel_avg_dummy",bc,BndryFunc(FORT_DSDTFILL));
+      desc_lst.setComponent(Average_Type,Yvel+BL_SPACEDIM,"yvel_rms_dummy",bc,BndryFunc(FORT_DSDTFILL));
+#if (BL_SPACEDIM==3)
+      desc_lst.setComponent(Average_Type,Zvel,"zvel_avg_dummy",bc,BndryFunc(FORT_DSDTFILL));
+      desc_lst.setComponent(Average_Type,Zvel+BL_SPACEDIM,"zvel_rms_dummy",bc,BndryFunc(FORT_DSDTFILL));
+#endif
+
+      Vector<std::string> var_names_ave(BL_SPACEDIM*2);
+      var_names_ave[Xvel] = "x_vel_average";
+      var_names_ave[Yvel] = "y_vel_average";
+#if (BL_SPACEDIM==3)
+      var_names_ave[Zvel] = "z_vel_average";
+#endif
+      var_names_ave[Xvel+BL_SPACEDIM] = "x_vel_rms";
+      var_names_ave[Yvel+BL_SPACEDIM] = "y_vel_rms";
+#if (BL_SPACEDIM==3)
+      var_names_ave[Zvel+BL_SPACEDIM] = "z_vel_rms";
+#endif
+      derive_lst.add("velocity_average",IndexType::TheCellType(),BL_SPACEDIM*2,
+                     var_names_ave,der_vel_avg,the_same_box);
+      derive_lst.addComponent("velocity_average",desc_lst,Average_Type,Xvel,BL_SPACEDIM*2);
+
+    }
+
     //
     // **************  DEFINE DERIVED QUANTITIES ********************
     //
@@ -492,5 +530,73 @@ NavierStokes::variableSetUp ()
     //
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
+
+    //
+    // Dynamically generated error tagging functions
+    //
+    std::string amr_prefix = "amr";
+    ParmParse ppamr(amr_prefix);
+    Vector<std::string> refinement_indicators;
+    ppamr.queryarr("refinement_indicators",refinement_indicators,0,ppamr.countval("refinement_indicators"));
+    for (int i=0; i<refinement_indicators.size(); ++i)
+    {
+        std::string ref_prefix = amr_prefix + "." + refinement_indicators[i];
+
+        ParmParse ppr(ref_prefix);
+        RealBox realbox;
+        if (ppr.countval("in_box_lo")) {
+            std::vector<Real> box_lo(BL_SPACEDIM), box_hi(BL_SPACEDIM);
+            ppr.getarr("in_box_lo",box_lo,0,box_lo.size());
+            ppr.getarr("in_box_hi",box_hi,0,box_hi.size());
+            realbox = RealBox(&(box_lo[0]),&(box_hi[0]));
+        }
+
+        AMRErrorTagInfo info;
+
+        if (realbox.ok()) {
+            info.SetRealBox(realbox);
+        }
+        if (ppr.countval("start_time") > 0) {
+            Real min_time; ppr.get("start_time",min_time);
+            info.SetMinTime(min_time);
+        }
+        if (ppr.countval("end_time") > 0) {
+            Real max_time; ppr.get("end_time",max_time);
+            info.SetMaxTime(max_time);
+        }
+        if (ppr.countval("max_level") > 0) {
+            int max_level; ppr.get("max_level",max_level);
+            info.SetMaxLevel(max_level);
+        }
+
+        if (ppr.countval("value_greater")) {
+            Real value; ppr.get("value_greater",value);
+            std::string field; ppr.get("field_name",field);
+            errtags.push_back(AMRErrorTag(value,AMRErrorTag::GREATER,field,info));
+        }
+        else if (ppr.countval("value_less")) {
+            Real value; ppr.get("value_less",value);
+            std::string field; ppr.get("field_name",field);
+            errtags.push_back(AMRErrorTag(value,AMRErrorTag::LESS,field,info));
+        }
+        else if (ppr.countval("vorticity_greater")) {
+            Real value; ppr.get("vorticity_greater",value);
+            const std::string field="mag_vort";
+            errtags.push_back(AMRErrorTag(value,AMRErrorTag::VORT,field,info));
+        }
+        else if (ppr.countval("adjacent_difference_greater")) {
+            Real value; ppr.get("adjacent_difference_greater",value);
+            std::string field; ppr.get("field_name",field);
+            errtags.push_back(AMRErrorTag(value,AMRErrorTag::GRAD,field,info));
+        }
+        else if (realbox.ok())
+        {
+            errtags.push_back(AMRErrorTag(info));
+        }
+        else {
+            Abort(std::string("Unrecognized refinement indicator for " + refinement_indicators[i]).c_str());
+        }
+    }
+
     error_setup();
 }

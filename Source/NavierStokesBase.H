@@ -48,7 +48,6 @@ enum StateNames  { Xvel=0, Yvel, Zvel, Density};
 enum PressureNames { Pressure=0 };
 enum DivuNames { Divu=0};
 enum DsDtNames { Dsdt=0};
-enum DpDtNames { Dpdt=0};
 
 class NavierStokesBase
     :
@@ -138,6 +137,11 @@ public:
     virtual void restart (amrex::Amr&          papa,
                           std::istream& is,
                           bool          bReadSpecial = false) override;
+    // Old checkpoint file may have different number of state types than the
+    // new source code.
+    //
+    virtual void set_state_in_checkpoint (amrex::Vector<int>& state_in_checkpoint) override;
+    
     //
     // Set time levels of state data.
     //
@@ -186,6 +190,14 @@ public:
 
     amrex::Vector<amrex::BCRec> fetchBCArray (int State_Type, int scomp, int ncomp);
 
+    amrex::Vector<amrex::BCRec> const& get_bcrec_velocity () const noexcept { return m_bcrec_velocity; }
+    amrex::Vector<amrex::BCRec> const& get_bcrec_scalars () const noexcept { return m_bcrec_scalars; }
+
+    amrex::BCRec const* get_bcrec_velocity_d_ptr () const noexcept {
+        return m_bcrec_velocity_d.dataPtr(); }
+    amrex::BCRec const* get_bcrec_scalars_d_ptr () const noexcept {
+        return m_bcrec_scalars_d.dataPtr(); }
+
     //
     // Select appropriate AMReX average_down() based on EB/non-EB and dimensionality
     // for use in derived classes and Projection sync fns and initial vel proj
@@ -194,6 +206,8 @@ public:
 		      int scomp, int ncomp);
 
     void calc_mut_LES(amrex::MultiFab*  diffusivity[BL_SPACEDIM], amrex::Real time);
+
+    void time_average(amrex::Real& time_avg, amrex::Real& time_avg_fluct, amrex::Real& dt_avg, const amrex::Real& dt_level);
 
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //
@@ -232,14 +246,13 @@ public:
     // Get the forcing term.
     //
     virtual void getForce (amrex::FArrayBox&       force,
-                           const amrex::Box&      bx,
-                           int              ngrow,
-                           int              strt_comp,
-                           int              num_comp,
+                           const amrex::Box&       bx,
+                           int                     strt_comp,
+                           int                     num_comp,
                            const amrex::Real       time,
                            const amrex::FArrayBox& Vel,
                            const amrex::FArrayBox& Scal,
-                           int              scalScomp);
+                           int                     scalScomp);
     //
     amrex::FluxRegister& getAdvFluxReg () {
         BL_ASSERT(advflux_reg);
@@ -492,10 +505,6 @@ public:
 
     void buildMetrics (); // 1-D metric arrays for RZ
     //
-    // Compute dpdt
-    //
-    void calcDpdt();
-    //
     void calc_dsdt (amrex::Real      time,
 		    amrex::Real      dt,
 		    amrex::MultiFab& dsdt);
@@ -589,11 +598,20 @@ public:
     // MAC edge velocities.
     //
     amrex::MultiFab* u_mac;
+    int  umac_n_grow;
     //
     // Advective update terms.
     //
     amrex::MultiFab* aofs;
-
+    //
+    // BC info for advection
+    //
+    amrex::Vector<amrex::BCRec> m_bcrec_velocity;
+    amrex::Vector<amrex::BCRec> m_bcrec_scalars;
+    // NOTE that DeviceVector reverts to amrex::Vector if !AMREX_USE_GPU
+    amrex::Gpu::DeviceVector<amrex::BCRec> m_bcrec_velocity_d;
+    amrex::Gpu::DeviceVector<amrex::BCRec> m_bcrec_scalars_d;
+  
     Diffusion* diffusion;
     //
     // arrays for variable viscosity and diffusivity
@@ -651,10 +669,6 @@ public:
     // Intersection of current amrex::BoxArray with that from before regrid.
     //
     amrex::BoxArray old_intersect_new;
-    //
-    // Controls for particle subcycling
-    //
-    int  umac_n_grow;
     //
     // Static objects.
     //
@@ -745,15 +759,20 @@ public:
     static amrex::Real smago_Cs_cst;       // A parameter for the Smagorinsky model, usually set to 0.18
     static amrex::Real sigma_Cs_cst;       // A parameter for the Sigma model, usually set to 1.5
     //
-    // Member when pressure defined at points in time rather than interval
+    // Parameters for averaging
     //
-    static int  Dpdt_Type;
+    static amrex::Vector<amrex::Real> time_avg;
+    static amrex::Vector<amrex::Real> time_avg_fluct;
+    static amrex::Vector<amrex::Real> dt_avg;
+    static int avg_interval;
+    static int compute_fluctuations;
     //
     // Members for non-zero divu.
     //
     static int  additional_state_types_initialized;
     static int  Divu_Type;
     static int  Dsdt_Type;
+    static int  Average_Type;
     static int  num_state_type;
     static int  have_divu;
     static int  have_dsdt;
@@ -797,6 +816,8 @@ public:
 #else
     static const int  godunov_hyp_grow = 3;
 #endif
+
+    static bool average_in_checkpoint;
 
 };
 

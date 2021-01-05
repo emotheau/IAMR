@@ -38,6 +38,8 @@ namespace
     bool initialized = false;
 }
 
+Vector<AMRErrorTag> NavierStokes::errtags;
+
 void
 NavierStokes::variableCleanUp ()
 {
@@ -91,17 +93,22 @@ NavierStokes::initData ()
     const Real* dx       = geom.CellSize();
     MultiFab&   S_new    = get_new_data(State_Type);
     MultiFab&   P_new    = get_new_data(Press_Type);
+    if (avg_interval > 0){
+      MultiFab&   Save_new    = get_new_data(Average_Type);
+      Save_new.setVal(0.);
+    }
     const Real  cur_time = state[State_Type].curTime();
 #ifdef _OPENMP
-#pragma omp parallel
+#pragma omp parallel  if (Gpu::notInLaunchRegion())
 #endif
-    for (MFIter snewmfi(S_new,true); snewmfi.isValid(); ++snewmfi)
+    for (MFIter snewmfi(S_new,TilingIfNotGPU()); snewmfi.isValid(); ++snewmfi)
     {
         const Box& vbx = snewmfi.tilebox();
 
         FArrayBox& Sfab = S_new[snewmfi];
         FArrayBox& Pfab = P_new[snewmfi];
 
+	//fixme -- change to GPU once initdata is updated
         Sfab.setVal<RunOn::Host>(0.0,snewmfi.growntilebox(),0,S_new.nComp());
         Pfab.setVal<RunOn::Host>(0.0,snewmfi.grownnodaltilebox(-1,P_new.nGrow()));
 
@@ -211,11 +218,6 @@ NavierStokes::initData ()
 
         if (have_dsdt)
             get_new_data(Dsdt_Type).setVal(0);
-    }
-
-    if (state[Press_Type].descriptor()->timeType() == StateDescriptor::Point)
-    {
-        get_new_data(Dpdt_Type).setVal(0);
     }
 
     is_first_step_after_regrid = false;
@@ -414,7 +416,7 @@ NavierStokes::advance (Real time,
     }
 
 #ifdef AMREX_PARTICLES
-    if (theNSPC() != 0 and NavierStokes::initial_iter != true)
+    if (theNSPC() != 0 and NavierStokes::initial_step != true)
     {
         theNSPC()->AdvectWithUmac(u_mac, level, dt);
     }
@@ -515,12 +517,9 @@ NavierStokes::predict_velocity (Real  dt)
 
 #if AMREX_USE_EB
 
-    Vector<BCRec> math_bcs(AMREX_SPACEDIM);
-    math_bcs = fetchBCArray(State_Type,Xvel,AMREX_SPACEDIM);
-
     MOL::ExtrapVelToFaces( Umf,
                            D_DECL(u_mac[0], u_mac[1], u_mac[2]),
-                           geom, math_bcs );
+                           geom, m_bcrec_velocity );
 #else
     //
     // Non-EB version
@@ -548,7 +547,7 @@ NavierStokes::predict_velocity (Real  dt)
                 Print() << "---\nA - Predict velocity:\n Calling getForce...\n";
             }
 
-            getForce(forcing_term[U_mfi],gbx,ngrow,Xvel,AMREX_SPACEDIM,
+            getForce(forcing_term[U_mfi],gbx,Xvel,AMREX_SPACEDIM,
 		     prev_time,Ufab,Smf[U_mfi],0);
 
             //
@@ -563,17 +562,15 @@ NavierStokes::predict_velocity (Real  dt)
             AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
             {
                 tf(i,j,k,n) = ( tf(i,j,k,n) + visc(i,j,k,n) - gp(i,j,k,n) ) / rho(i,j,k);
+
             });
         }
     }
 
-    Vector<BCRec> math_bcs(AMREX_SPACEDIM);
-    math_bcs = fetchBCArray(State_Type,Xvel,AMREX_SPACEDIM);
-
     //velpred=1 only, use_minion=1, ppm_type, slope_order
     Godunov::ExtrapVelToFaces( Umf, forcing_term, AMREX_D_DECL(u_mac[0], u_mac[1], u_mac[2]),
-                               math_bcs, geom, dt, godunov_use_ppm,
-                               godunov_use_forces_in_trans );
+                               m_bcrec_velocity, m_bcrec_velocity_d.dataPtr(), geom, dt,
+			       godunov_use_ppm, godunov_use_forces_in_trans );
 
 #endif
 
@@ -648,10 +645,6 @@ NavierStokes::scalar_advection (Real dt,
 
         const Box& domain = geom.Domain();
 
-        Vector<BCRec> math_bc(num_scalars);
-        math_bc = fetchBCArray(State_Type,fscalar,num_scalars);
-
-
         MultiFab cfluxes[AMREX_SPACEDIM];
         MultiFab edgstate[AMREX_SPACEDIM];
         int nghost = 2;
@@ -663,14 +656,11 @@ NavierStokes::scalar_advection (Real dt,
             edgstate[i].define(ba, dmap, num_scalars, nghost, MFInfo(), Factory());
         }
 
-        Vector<BCRec> math_bcs(num_scalars);
-        math_bcs = fetchBCArray(State_Type, fscalar, num_scalars);
-
         MOL::ComputeAofs(*aofs, fscalar, num_scalars, Smf, 0,
                          D_DECL(u_mac[0],u_mac[1],u_mac[2]),
                          D_DECL(edgstate[0],edgstate[1],edgstate[2]), 0, false,
                          D_DECL(cfluxes[0],cfluxes[1],cfluxes[2]), 0,
-                         math_bcs, geom  );
+                         m_bcrec_scalars, m_bcrec_scalars_d.dataPtr(), geom  );
 
         if (do_reflux)
         {
@@ -701,8 +691,6 @@ NavierStokes::scalar_advection (Real dt,
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
         {
-            FArrayBox tforces;
-
             for (MFIter S_mfi(Smf,TilingIfNotGPU()); S_mfi.isValid(); ++S_mfi)
             {
                 const Box& gbx = S_mfi.growntilebox(nGrowF);
@@ -713,7 +701,7 @@ NavierStokes::scalar_advection (Real dt,
                             << " Calling getForce..." << '\n';
                 }
 
-                getForce(forcing_term[S_mfi],gbx,nGrowF,fscalar,num_scalars,
+                getForce(forcing_term[S_mfi],gbx,fscalar,num_scalars,
 			 prev_time,Umf[S_mfi],Smf[S_mfi],0);
 
                 for (int n=0; n<num_scalars; ++n)
@@ -749,24 +737,22 @@ NavierStokes::scalar_advection (Real dt,
             }
         }
 
-
-        Vector<BCRec> math_bcs(num_scalars);
-        math_bcs = fetchBCArray(State_Type, fscalar, num_scalars);
-
         amrex::Gpu::DeviceVector<int> iconserv;
         iconserv.resize(num_scalars, 0);
+	// does this actually put data in GPU memory?
         for (int comp = 0; comp < num_scalars; ++comp)
         {
             iconserv[comp] = (advectionType[fscalar+comp] == Conservative) ? 1 : 0;
 	}
+    
 
         Godunov::ComputeAofs(*aofs, fscalar, num_scalars,
                              Smf, 0,
                              AMREX_D_DECL( u_mac[0], u_mac[1], u_mac[2] ),
                              AMREX_D_DECL( edgestate[0], edgestate[1], edgestate[2] ), 0, false,
                              AMREX_D_DECL( cfluxes[0], cfluxes[1], cfluxes[2] ), 0,
-                             forcing_term, 0, *divu_fp, math_bcs, geom, iconserv,
-                             dt, godunov_use_ppm, godunov_use_forces_in_trans, false );
+                             forcing_term, 0, *divu_fp, m_bcrec_scalars_d.dataPtr(),
+			     geom, iconserv, dt, godunov_use_ppm, godunov_use_forces_in_trans, false );
 
         if (do_reflux)
         {
@@ -946,17 +932,27 @@ NavierStokes::scalar_diffusion_update (Real dt,
 
 	    for (MFIter fmfi(*fluxn[d]); fmfi.isValid(); ++fmfi)
 	    {
-	      const Box& ebox = (*fluxn[d])[fmfi].box();//fmfi.tilebox();
+	      const Box& ebox = (*fluxn[d])[fmfi].box();
 
 	      fluxtot.resize(ebox,1);
-	      fluxtot.copy<RunOn::Host>((*fluxn[d])[fmfi],ebox,0,ebox,0,1);
-	      fluxtot.plus<RunOn::Host>((*fluxnp1[d])[fmfi],ebox,0,0,1);
+	      Elixir fdata_i = fluxtot.elixir();
+
+	      auto const& ftot = fluxtot.array();
+	      auto const& fn   = fluxn[d]->array(fmfi);
+	      auto const& fnp1 = fluxnp1[d]->array(fmfi);
+
+	      amrex::ParallelFor(ebox, [ftot, fn, fnp1 ]
+	      AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+	      {
+		ftot(i,j,k) = fn(i,j,k) + fnp1(i,j,k);
+	      });
 
 	      if (level < parent->finestLevel())
-		fluxes[fmfi].copy<RunOn::Host>(fluxtot);
+		fluxes[fmfi].copy<RunOn::Gpu>(fluxtot);
 
+	      //fixme - not sure what FineAdd does exactly, presumable okay wo sync here
 	      if (level > 0)
-		getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sigma,1,dt,RunOn::Host);
+		getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sigma,1,dt,RunOn::Gpu);
 	    }
 
 	    if (level < parent->finestLevel())
@@ -1533,6 +1529,7 @@ NavierStokes::derive (const std::string& name,
 void
 NavierStokes::post_init (Real stop_time)
 {
+
     if (level > 0)
         //
         // Nothing to sync up at level > 0.
@@ -1575,6 +1572,20 @@ NavierStokes::post_init (Real stop_time)
         sum_jet_quantities();
 #endif
 #endif
+
+    if (NavierStokesBase::avg_interval > 0)
+    {
+      const int   finest_level = parent->finestLevel();
+      NavierStokesBase::time_avg.resize(finest_level+1);
+      NavierStokesBase::time_avg_fluct.resize(finest_level+1);
+      NavierStokesBase::dt_avg.resize(finest_level+1);
+      NavierStokesBase::time_avg[level] = 0.;
+      NavierStokesBase::time_avg_fluct[level] = 0.;
+      NavierStokesBase::dt_avg[level] = 0.;
+      const amrex::Real dt_level = parent->dtLevel(level);
+      time_average(NavierStokesBase::time_avg[level], NavierStokesBase::time_avg_fluct[level], NavierStokesBase::dt_avg[level], dt_level);
+    }
+
 }
 
 //
@@ -1692,11 +1703,6 @@ NavierStokes::post_init_press (Real&        dt_init,
     for (int k = 0; k <= finest_level; k++)
     {
         getLevel(k).setTimeLevel(strt_time,dt_save[k],dt_save[k]);
-        if (state[Press_Type].descriptor()->timeType() == StateDescriptor::Point)
-        {
-            getLevel(k).state[Press_Type].setNewTimeLevel(.5*dt_init);
-            getLevel(k).get_old_data(Dpdt_Type).setVal(0);
-        }
     }
 
     parent->setDtLevel(dt_save);
@@ -2500,4 +2506,24 @@ NavierStokes::getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
     {
       diffusivity[dir]->setVal(visc_coef[state_comp], dst_comp, ncomp, diffusivity[dir]->nGrow());
     }
+}
+
+void
+NavierStokes::errorEst (TagBoxArray& tags,
+                        int          clearval,
+                        int          tagval,
+                        Real         time,
+                        int          n_error_buf,
+                        int          ngrow)
+{
+
+  NavierStokesBase::errorEst(tags,clearval,tagval,time,n_error_buf,ngrow);
+
+  for (int j=0; j<errtags.size(); ++j) {
+    std::unique_ptr<MultiFab> mf;
+    if (errtags[j].Field() != std::string()) {
+      mf = derive(errtags[j].Field(), time, errtags[j].NGrow());
+    }
+    errtags[j](tags,mf.get(),clearval,tagval,time,level,geom);
+  }
 }

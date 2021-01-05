@@ -22,30 +22,29 @@
       data rt_pertamp/0.0D0/
       data rt_nfreq/0/
       data rt_xfrontw/0.0d0/
-      end  
-    
+      end
+
 module prob_3D_module
 
   implicit none
 
   private
 
-  public :: amrex_probinit, FORT_INITDATA, initfromrest, &
-            initrt, initbubble, initpervort, initspin, &
-            initviscbench, initvort, initchannel, inithotspot, &
-            initeuler, initbrnrsh, inflowt, taylorgreen, &
-            swirl, inithit, initinflow, initswirltest, &
-            initflow, initjet, initinjection, initroundjet, &
-            initcoriolis, initheating, initgravitycurrent, &
-            initrayleightaylor, initraneul, initdenadvect, &
-            initshearlayer, initiwpctm, &
-            FORT_MAKEFORCE, FORT_DSDTFILL, &
+  public :: amrex_probinit, FORT_INITDATA,  &
+            initflowpastcylinder, &
+            FORT_DSDTFILL, &
             FORT_ADVERROR, FORT_ADV2ERROR, FORT_TEMPERROR, FORT_MVERROR, &
             FORT_DENFILL, FORT_ADVFILL, FORT_TEMPFILL, FORT_XVELFILL, &
             FORT_YVELFILL, FORT_ZVELFILL, FORT_PRESFILL, FORT_DIVUFILL
 
-contains      
-      
+  !
+  ! Set problo and probhi as module variables so that they can be
+  ! used
+  !
+  REAL_T :: m_problo(SDIM), m_probhi(SDIM)
+
+contains
+
 
 !c ::: -----------------------------------------------------------
 !c ::: This routine is called at problem initialization time
@@ -55,15 +54,15 @@ contains
 !c ::: problem specific data from a namelist or other inputcdm
 !c ::: files and possibly store them or derived information
 !c ::: in FORTRAN common blocks for later use.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: init      => TRUE if called at start of problem run
 !c :::              FALSE if called from restart
 !c ::: name      => name of "probin" file
 !c ::: namlen    => length of name
 !c ::: strttime <=  start problem with this time variable
-!c ::: 
+!c :::
 !c ::: -----------------------------------------------------------
 
       subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
@@ -73,7 +72,7 @@ contains
       integer untin, i
       REAL_T  problo(SDIM), probhi(SDIM)
 
-    
+
 #include <probdata.H>
 
 #ifdef DO_IAMR_FORCE
@@ -175,6 +174,13 @@ contains
          probin(i:i) = char(name(i))
       end do
 
+      !
+      ! Set module variables
+      !
+      m_problo = problo
+      m_probhi = probhi
+
+
 #ifdef BL_DO_FLCT
       forceInflow = .FALSE.
       numInflPlanesStore = 8
@@ -255,7 +261,7 @@ contains
 
       domnlo(1) = problo(1)
       domnlo(2) = problo(2)
-      domnlo(3) = problo(3) 
+      domnlo(3) = problo(3)
       domnhi(1) = probhi(1)
       domnhi(2) = probhi(2)
       domnhi(3) = probhi(3)
@@ -327,7 +333,7 @@ contains
          if ( rt_nfreq .gt. 1 ) then
             permin =  rt_nfreq**2
             permax = -rt_nfreq**2
-            do i = 0, MAXPHASE 
+            do i = 0, MAXPHASE
                do j = 0, MAXPHASE
                   xtmp = 2.d0*rt_PI*dble(i)/dble(MAXPHASE)
                   ytmp = 2.d0*rt_PI*dble(j)/dble(MAXPHASE)
@@ -358,9 +364,9 @@ contains
          if (isioproc .eq. 1) then
             write (*,*) "Initialising random number generator..."
          endif
-         
+
          twicePi = two*Pi
-         
+
          if (blrandseed.gt.0) then
             call blutilinitrand(blrandseed)
             call blutilrand(rn)
@@ -373,25 +379,25 @@ contains
             call blutilinitrand(111397)
          endif
 
-         if (probtype.eq.14) then 
+         if (probtype.eq.14) then
             Lx = domnhi(1)-domnlo(1)
             Ly = domnhi(2)-domnlo(2)
             Lz = domnhi(3)-domnlo(3)
-         else if (probtype.eq.15) then 
+         else if (probtype.eq.15) then
             Lx = forcing_xlength
             Ly = forcing_ylength
             Lz = forcing_zlength
          endif
-         if (hack_lz.eq.1) then 
+         if (hack_lz.eq.1) then
             Lz = Lz/two
          endif
-         
+
          if (isioproc .eq. 1) then
             write(*,*) "Lx = ",Lx
-            write(*,*) "Ly = ",Ly 
+            write(*,*) "Ly = ",Ly
             write(*,*) "Lz = ",Lz
          endif
-         
+
          Lmin = min(Lx,Ly,Lz)
          kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
          nxmodes = nmodes*int(0.5+Lx/Lmin)
@@ -404,7 +410,7 @@ contains
             write(*,*) "nymodes = ",nymodes
             write(*,*) "nzmodes = ",nzmodes
          endif
-         
+
          if (forcing_time_scale_min.eq.zero) then
             forcing_time_scale_min = half
          endif
@@ -415,7 +421,7 @@ contains
          freqMin = one/forcing_time_scale_max
          freqMax = one/forcing_time_scale_min
          freqDiff= freqMax-freqMin
-         
+
          if (isioproc .eq. 1) then
             write(*,*) "forcing_time_scale_min = ",forcing_time_scale_min
             write(*,*) "forcing_time_scale_max = ",forcing_time_scale_max
@@ -423,7 +429,7 @@ contains
             write(*,*) "freqMax = ",freqMax
             write(*,*) "freqDiff = ",freqDiff
          endif
-         
+
          mode_count = 0
 
          xstep = int(Lx/Lmin+0.5)
@@ -432,16 +438,16 @@ contains
          if (isioproc .eq. 1) then
             write (*,*) "Mode step ",xstep, ystep, zstep
          endif
-         
+
          do kz = mode_start*zstep, nzmodes, zstep
             kzd = dfloat(kz)
             do ky = mode_start*ystep, nymodes, ystep
                kyd = dfloat(ky)
                do kx = mode_start*xstep, nxmodes, xstep
                   kxd = dfloat(kx)
-                  
+
                   kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
-                  
+
                   if (kappa.le.kappaMax) then
                      call blutilrand(rn)
                      FTX(kx,ky,kz) = (freqMin + freqDiff*rn)*twicePi
@@ -525,7 +531,7 @@ contains
                         if (force_scale.gt.zero) then
                            FAX(kx,ky,kz) = force_scale * px * Ekh / mp2
                            FAY(kx,ky,kz) = force_scale * py * Ekh / mp2
-                           FAZ(kx,ky,kz) = force_scale * pz * Ekh / mp2 
+                           FAZ(kx,ky,kz) = force_scale * pz * Ekh / mp2
                         else
                            FAX(kx,ky,kz) = px * Ekh / mp2
                            FAY(kx,ky,kz) = py * Ekh / mp2
@@ -541,7 +547,7 @@ contains
                            write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz)
                         endif
                      endif
-                  endif   
+                  endif
                enddo
             enddo
          enddo
@@ -554,7 +560,7 @@ contains
                kyd = dfloat(ky)
                do kx = mode_start, nxmodes
                   kxd = dfloat(kx)
-                  
+
                   kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
 
                   if (kappa.le.kappaMax) then
@@ -656,7 +662,7 @@ contains
                            write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz)
                         endif
                      endif
-                  endif   
+                  endif
                enddo
             enddo
          enddo
@@ -696,7 +702,7 @@ contains
             endif
 
             FAX(1,1,1) = 4.9159487814194529d0
-            FAY(1,1,1) = 8.4733283347910291d0 
+            FAY(1,1,1) = 8.4733283347910291d0
             FAZ(1,1,1) = -4.2206554333498882d0
             FTX(1,1,1) = 5.1975883412614365d0
             FTY(1,1,1) =  5.9058228872665275d0
@@ -839,7 +845,7 @@ contains
             TAT(2,2,2) = 4.6252688992576214d0
 
             FAX(1,3,2) = 2.06658971082688374d-2
-            FAY(1,3,2) = 2.74013268199971953d-2 
+            FAY(1,3,2) = 2.74013268199971953d-2
             FAZ(1,3,2) = -2.2854566029359611d0
             FTX(1,3,2) = 5.8157142214007846d0
             FTY(1,3,2) = 4.9600077380032275d0
@@ -896,17 +902,17 @@ contains
                            write (*,*) "Amplitudes - C"
                            write (*,*) FAX(kx,ky,kz), FAY(kx,ky,kz), FAZ(kx,ky,kz)
                            write (*,*) "Frequencies"
-                           write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz) 
+                           write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz)
                            write (*,*) "Phases"
                            write (*,*) FPX(kx,ky,kz), FPY(kx,ky,kz), FPZ(kx,ky,kz)
                            write (*,*) "TAT"
                            write (*,*) TAT(kx,ky,kz)
-                        endif   
+                        endif
                      enddo
                   enddo
                enddo
             endif
-!c     override 
+!c     override
          endif
 
 !c     probtype 14 or 15
@@ -919,17 +925,17 @@ contains
          Lx = f_probhi(1)-f_problo(1)
          Ly = f_probhi(2)-f_problo(2)
          Lz = f_probhi(3)-f_problo(3)
-         
+
 !c     Initialise random number generator
          idum=-1
          f0 = ran1(idum)
-         
+
 !c     Get frequencies higher than fundamental
          f0 = half*(vel1+vel2)/(five*delta0)
          fmin = f0/five
          fmax = f0
          fdif = fmax-fmin
-         
+
 !c     Get random numbers
          do n = 1, 10
             mag(n)  = amag*ran1(idum)
@@ -939,7 +945,7 @@ contains
          end do
       endif
 
-      end subroutine amrex_probinit 
+      end subroutine amrex_probinit
 
 !c ::: -----------------------------------------------------------
 !c ::: This routine is called at problem setup time and is used
@@ -948,15 +954,15 @@ contains
 !c ::: field need not be set.  A subsequent projection iteration
 !c ::: will define aa divergence free velocity field along with a
 !c ::: consistant pressure.
-!c ::: 
+!c :::
 !c ::: NOTE:  all arrays have one cell of ghost zones surrounding
 !c :::        the grid interior.  Values in these cells need not
 !c :::        be set here.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: level     => amr level of grid
-!c ::: time      => time at which to init data             
+!c ::: time      => time at which to init data
 !c ::: lo,hi     => index limits of grid interior (cell centered)
 !c ::: nscal     => number of scalar quantities.  You should know
 !c :::		   this already!
@@ -969,10 +975,10 @@ contains
 !c :::		   ghost region).
 !c ::: -----------------------------------------------------------
       subroutine FORT_INITDATA(level,time,lo,hi,nscal, &
-     	 	                      vel,scal,DIMS(state),press,DIMS(press), &
-                              dx,xlo,xhi) &
-                              bind(C, name="FORT_INITDATA")
-                              
+                               vel,scal,DIMS(state),press,DIMS(press), &
+                               dx,xlo,xhi) &
+                               bind(C, name="FORT_INITDATA")
+
       implicit none
       integer    level, nscal
       integer    lo(SDIM), hi(SDIM)
@@ -984,158 +990,16 @@ contains
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-     
+
 #include <probdata.H>
 
 !c      print *, 'INITDATA ', time, lo(1),hi(1), lo(2), hi(2), lo(3), hi(3)
 
-      if (probtype .eq. 1) then
-         call initspin(level,time,lo,hi,nscal, &
-          	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-
-      else if (probtype .eq. 2) then
-         call initbubble(level,time,lo,hi,nscal, &
-          	         vel,scal,DIMS(state),press,DIMS(press), &
-                        dx,xlo,xhi)
-
-      else if (probtype .eq. 3) then
-         call initvort(level,time,lo,hi,nscal, &
-          	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-
-      else if (probtype .eq. 4) then
-         call initchannel(level,time,lo,hi,nscal, &
-          	          vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi) 
-
-      else if (probtype .eq. 5) then
-         call initpervort(level,time,lo,hi,nscal, &
-          	          vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-
-      else if (probtype .eq. 6) then
-         call inithotspot(level,time,lo,hi,nscal, &
-          	          vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-
-      else if (probtype .eq. 7) then
-         call initeuler(level,time,lo,hi,nscal, &
-                         vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-
-      else if (probtype .eq. 8) then
-         call initbrnrsh(level,time,lo,hi,nscal, &
-                         vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-
-      else if (probtype .eq. 9) then
-         call initviscbench(level,time,lo,hi,nscal, &
-                           vel,scal,DIMS(state),press,DIMS(press), &
-                           dx,xlo,xhi)
+         call initflowpastcylinder(level,time,lo,hi,nscal, &
+          vel,scal,DIMS(state),press,DIMS(press), &
+          dx,xlo,xhi, m_probhi )
 
 
-      else if (probtype .eq. 10) then
-         call initrt(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-
-      else if (probtype .eq. 11) then
-         call inflowt(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 12) then
-         call taylorgreen(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 13) then
-         call swirl(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 14) then
-         call inithit(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 15) then
-         call initinflow(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 16) then
-         call initjet(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 17) then
-         call initinjection(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 18) then
-         call initroundjet(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 19) then
-         call initcoriolis(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 20) then
-         call initheating(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 21) then
-         call initraneul(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 22) then
-         call initdenadvect(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 23) then
-         call initrayleightaylor(level,time,lo,hi,nscal,  &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 24) then
-         call initshearlayer(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 25) then
-         call initgravitycurrent(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 26) then
-         call initinflow(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-
-      else if (probtype .eq. 27) then
-         call initflow(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-      else if (probtype .eq. 28) then
-         call initswirltest(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-      else if (probtype .eq. 29 .or. probtype .eq. 30) then
-         call initfromrest(level,time,lo,hi,nscal, &
-             vel,scal,DIMS(state),press,DIMS(press), &
-             dx,xlo,xhi)
-      else
-         write(6,*) "INITDATA: bad probtype = ",probtype
-      end if
       end subroutine FORT_INITDATA
 
 !c----------------------------------------------------------------------
@@ -1153,121 +1017,15 @@ contains
       else
          zblend1 = 0.5D0*(1.0D0 + TANH((x-rad)/trn))
       end if
-      end
-!c
-!c ::: -----------------------------------------------------------
-!c ::: Initialise system from rest. Introduced for the lid-driven cavity
-!c ::: test case. 
-!c
-      subroutine initfromrest(level,time,lo,hi,nscal, &
-                             vel,scal,DIMS(state),press,DIMS(press), &
-                                 dx,xlo,xhi)
-      implicit none
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
+    end function zblend1
 
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-
-#include <probdata.H>
-
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            do k = lo(3), hi(3)
-               scal(i,j,k,1) = one
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-               scal(i,j,k,nscal) = zero
-            end do
-         end do
-      end do
-
-      end subroutine initfromrest
 !c
 !c ::: -----------------------------------------------------------
 !c
-      subroutine initrt(level,time,lo,hi,nscal, &
-     	 	            vel,scal,DIMS(state),press,DIMS(press), &
-                           dx,xlo,xhi)
-      implicit none
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
+      subroutine initflowpastcylinder ( level,time,lo,hi,nscal, &
+       &                                vel,scal,DIMS(state),press,DIMS(press), &
+       &                                dx,xlo,xhi,probhi)
 
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n, m
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  pert,ztemp
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do j = lo(2), hi(2)
-         y = xlo(2) + hy*(dble(j-lo(2)) + 0.5d0)
-         do i = lo(1), hi(1)
-            x = xlo(1) + hx*(dble(i-lo(1)) + 0.5d0)
-            pert = 0.d0
-            do n = 1, rt_nfreq
-               do m = 1, rt_nfreq
-                  pert = pert &
-                      + sin( &
-                      2.0D0*rt_PI*dble(n)*x/f_probhi(1) + rt_ranphse(n,m,1) &
-                      ) &
-                      * sin( &
-                      2.0D0*rt_PI*dble(m)*y/f_probhi(2) + rt_ranphse(n,m,2) &
-                      ) &
-                      *rt_ranampl(n,m)
-               end do
-            end do
-            ztemp = rt_splitx - pert*rt_pertamp
-            do k = lo(3), hi(3)
-               z = xlo(3) + hz*(dble(k-lo(3)) + 0.5d0)
-               scal(i,j,k,1) = &
-                   rt_den_1  &
-                   + (rt_den_2-rt_den_1)*zblend1(z,ztemp,rt_xfrontw)
-               vel(i,j,k,1) = 0
-               vel(i,j,k,2) = 0
-               vel(i,j,k,3) = 0
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-               scal(i,j,k,nscal) = 0
-   	    end do
-         end do
-      end do
-
-      end subroutine initrt
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initbubble(level,time,lo,hi,nscal, &
-     	 	            vel,scal,DIMS(state),press,DIMS(press), &
-                           dx,xlo,xhi)
       implicit none
 
       integer    level, nscal
@@ -1275,80 +1033,10 @@ contains
       integer    DIMDEC(state)
       integer    DIMDEC(press)
       REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
+      REAL_T     xlo(SDIM), xhi(SDIM), probhi(SDIM)
       REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      if (adv_dir .eq. 1) then
-         x_vel = adv_vel
-         y_vel = zero
-         z_vel = zero
-      else if (adv_dir .eq. 2) then
-         x_vel = zero
-         y_vel = adv_vel
-         z_vel = zero
-!c     AJA - This next line originally said 2!
-      else if (adv_dir .eq. 3) then
-         x_vel = zero
-         y_vel = zero
-         z_vel = adv_vel
-      else 
-         write(6,*) "initbubble: adv_dir = ",adv_dir
-         stop
-      end if
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-               vel(i,j,k,1) = x_vel
-               vel(i,j,k,2) = y_vel
-               vel(i,j,k,3) = z_vel
-               scal(i,j,k,1) = merge(denfact,one,dist.lt.radblob)
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-               scal(i,j,k,nscal) = merge(one,zero,dist.lt.radblob)
-   	    end do
-         end do
-      end do
-
-      end subroutine initbubble
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initpervort(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
+      REAL_T     scal(DIMV(state),nscal)
+      REAL_T     press(DIMV(press))
 !c
 !c     ::::: local variables
 !c
@@ -1362,637 +1050,32 @@ contains
       hx = dx(1)
       hy = dx(2)
       hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = tanh(30.*(.25-abs(y-.5)))
-               vel(i,j,k,2) = .05*sin(two*Pi*x)
-               vel(i,j,k,3) = zero
-
-               scal(i,j,k,1) = one
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do
-
-               dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-               scal(i,j,k,nscal) = merge(one,zero,dist.lt.radblob)
-            end do
-         end do
-      end do
-
-      end subroutine initpervort
-!c
-
-!c
-!c ::: -----------------------------------------------------------
-!c
-
-      subroutine initspin(level,time,lo,hi,nscal, &
-     	 	          vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  spx, spy, cpx, cpy
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(2)
-
-      if (adv_dir .eq. 1) then
-         x_vel = adv_vel
-         y_vel = zero
-         z_vel = zero
-      else if (adv_dir .eq. 2) then
-         x_vel = zero
-         y_vel = adv_vel
-         z_vel = zero
-!c     AJA - This next line also originally said 2!
-      else if (adv_dir .eq. 3) then
-         x_vel = zero
-         y_vel = zero
-         z_vel = adv_vel
-      else
-         write(6,*) "INITSPIN: adv_dir = ",adv_dir
-         stop
-      end if
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    spy = sin(Pi*y)
-	    cpy = cos(Pi*y)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
- 	       spx = sin(Pi*x)
-               cpx = cos(Pi*x)
-
-               vel(i,j,k,1) = x_vel - velfact*two*spy*cpy*spx**2
-               vel(i,j,k,2) = y_vel + velfact*two*spx*cpx*spy**2
-               vel(i,j,k,3) = z_vel
-
-  	       dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-
-               scal(i,j,k,1) = one + (denfact-one) * tanh(10.*(dist-radblob))
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-	       scal(i,j,k,nscal) = merge(one,zero,dist.lt.radblob)
-
-	    end do
-         end do
-      end do
-
-      end subroutine initspin
-!c
-!c ::: -----------------------------------------------------------
-!c ::: This case is an unsteady  viscous benchmark for which the
-!c ::: exact solution is,
-!c :::     u(x,y,t) = - Cos(Pi x) Sin(Pi y) Exp(-2 Pi^2 Nu t)
-!c :::     v(x,y,t) =   Sin(Pi x) Cos(Pi y) Exp(-2 Pi^2 Nu t)
-!c :::     p(x,y,t) = - {Cos(2 Pi x) + Cos(2 Pi y)} Exp(-4 Pi^2 Nu t) / 4
-!c ::: In the utilities, iamrlib/BenchMarks, there is a
-!c ::: tool ViscBench2d.cpp that reads a plot file and compares the
-!c ::: solution against this exact solution.  This benchmark was
-!c ::: originally derived by G.I. Taylor (Phil. Mag., Vol. 46, No. 274,
-!c ::: pp. 671-674, 1923) and Ethier and Steinman
-!c ::: (Intl. J. Num. Meth. Fluids, Vol. 19, pp. 369-375, 1994) give
-!c ::: the pressure field.
-!c
-      subroutine initviscbench(level,time,lo,hi,nscal, &
-                              vel,scal,DIMS(state),press,DIMS(press), &
-                              dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  spx, spy, spz, cpx, cpy, cpz
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-        z = xlo(3) + hz*(float(k-lo(3)) + half)
-        spz = sin(Pi*z)
-        cpz = cos(Pi*z)
-
-        do j = lo(2), hi(2)
-          y = xlo(2) + hy*(float(j-lo(2)) + half)
-          spy = sin(Pi*y)
-          cpy = cos(Pi*y)
-
-          do i = lo(1), hi(1)
-            x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-            spx = sin(Pi*x)
-            cpx = cos(Pi*x)
-
-!c
-!c           Uniform in the X-direction
-!c
-            if (vb_unifdir .eq. 0) then
-              vel(i,j,k,1) =   zero
-              vel(i,j,k,2) =   spz*cpy
-              vel(i,j,k,3) = - cpz*spy
-              scal(i,j,k,1) =   one
-              do n = 2, nscal
-                scal(i,j,k,n) =   cpz*cpy
-              enddo
-
-!c
-!c           Uniform in the Y-direction
-!c
-            elseif (vb_unifdir .eq. 1) then
-              vel(i,j,k,1) = - cpx*spz
-              vel(i,j,k,2) =   zero
-              vel(i,j,k,3) =   spx*cpz
-              scal(i,j,k,1) =   one
-              do n = 2, nscal
-                scal(i,j,k,n) =   cpx*cpz
-              enddo
-
-!c
-!c           Uniform in the Z-direction
-!c
-            elseif (vb_unifdir .eq. 2) then
-              vel(i,j,k,1) = - cpx*spy
-              vel(i,j,k,2) =   spx*cpy
-              vel(i,j,k,3) =   zero
-              scal(i,j,k,1) =   one
-              do n = 2, nscal
-                scal(i,j,k,n) =   cpx*cpy
-              enddo
-            endif
-            end do
-         end do
-      end do
-      end subroutine initviscbench
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initvort(level,time,lo,hi,nscal, &
-     	 	          vel,scal,DIMS(state),press,DIMS(press), &
-                         dx,xlo,xhi)
-      implicit none
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z, r
-      REAL_T  hx, hy, hz
-      REAL_T  c, ux, uy, uz
-      REAL_T  umagin, umagout, absu, sinth, costh
-      REAL_T  small, a, b, r0
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-      small = 1.0e-10
-
-      r0 = two/three * radvort
-      a = one / ((radvort - r0)*(two*radvort - r0))
-      b = a * radvort**2 * (radvort - r0)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half) - zblob
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half) - yblob
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half) - xblob
-  	       r = sqrt(x**2 + y**2)
-!c              umagin = .5*r - 4*r**3
-!c              umagout = radvort*(.5*radvort - 4*radvort**3)/max(radvort,r)
-               umagin = velfact * (one - a*(r - r0)**2)
-               umagout = velfact * b/max(radvort,r)
-               absu = merge(umagout,umagin,(r - radvort) .ge. 0.0d0)
-               sinth = y/max(r,small*radvort)
-               costh = x/max(r,small*radvort)
-               vel(i,j,k,1) = -absu*sinth
-               vel(i,j,k,2) = absu*costh
-               vel(i,j,k,3) = zero
-               scal(i,j,k,1) = merge(denfact,one,r.lt.radblob)
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-               scal(i,j,k,nscal) = merge(one,zero,r.lt.radblob)
-	    end do
-         end do
-      end do
-
-      end subroutine initvort
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initchannel(level,time,lo,hi,nscal, &
-     	 	             vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      if ( adv_dir .ne. 1 ) then
-         write(6,*) "initchannel requires adv_dir=1, currently adv_dir=",adv_dir
-         stop
-      end if
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               vel(i,j,k,1) = adv_vel
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-               scal(i,j,k,1) = denfact
-
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do                  
-
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-  	       dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-	       scal(i,j,k,nscal) = merge(one,zero,dist.lt.radblob)
-            end do
-         end do
-      end do
-
-      end subroutine initchannel
-!c ::: -----------------------------------------------------------
-!c
-      subroutine inithotspot(level,time,lo,hi,nscal, &
-     	 	             vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-
-
-!c     ::::: local variables
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  dist
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      if (adv_dir .eq. 1) then
-         x_vel = adv_vel
-         y_vel = zero
-         z_vel = zero
-      else if (adv_dir .eq. 2) then
-         x_vel = zero
-         y_vel = adv_vel
-         z_vel = zero
-!c     AJA - Strangely, this one did not
-      else if (adv_dir .eq. 3) then
-         x_vel = zero
-         y_vel = zero
-         z_vel = adv_vel
-      else 
-         write(6,*) "inithotspot: adv_dir = ",adv_dir
-         stop
-      end if
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-               vel(i,j,k,1) = x_vel
-               vel(i,j,k,2) = y_vel
-               vel(i,j,k,3) = z_vel
-               scal(i,j,k,1) = one/denfact + (one - one/denfact) &
-                   *half*(one + tanh(40.*(dist - radblob)))
-               scal(i,j,k,2) = merge(one,zero,dist.lt.radblob)
-               do n = 3,nscal-1
-                  scal(i,j,k,n) = one
-               end do
-               scal(i,j,k,nscal) = one / scal(i,j,k,1)
-            end do
-         end do
-      end do
-      
-      end subroutine inithotspot
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initeuler(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz, r_yz
-
-      REAL_T  eps_input, beta_input, rho_input
-      REAL_T  delta_input, kappa_input
-
-      parameter (eps_input=0.05d0, rho_input=0.15d0)
-      parameter (beta_input=15.d0, delta_input=0.0333d0)
-      parameter (kappa_input=500.d0)
-
-#include <probdata.H>
-      
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(DBLE(k-lo(3)) + half) -half
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(DBLE(j-lo(2)) + half) -half
-            r_yz = sqrt(y*y+z*z)
-            do i = lo(1), hi(1)
-
-               x = xlo(1) + hx*(DBLE(i-lo(1)) + half) -half
-               vel(i,j,k,1) = tanh( (rho_input - r_yz) / delta_input)
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = eps_input * exp(-beta_input * (x*x + y*y) )
-
-               scal(i,j,k,1) = one
-               scal(i,j,k,2) = exp( -kappa_input * (rho_input - r_yz)**2 )
-
-               do n = 3,nscal
-                  scal(i,j,k,n) = one
-               end do
-
-            end do
-         end do
-      end do
-
-      end subroutine initeuler
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initbrnrsh(level,time,lo,hi,nscal, &
-                           vel,scal,DIMS(state),press,DIMS(press), &
-                           dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  umid,rmid,lamv,lamr,rfact
-
-
-#include <probdata.H>
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-
-      umid = (vel1+vel2)*half
-      rmid = (den1+den2)*half
-      lamv = (vel1-vel2)/(vel1+vel2)
-      lamr = (den1-den2)/(den1+den2)
 
          do k = lo(3), hi(3)
             z = xlo(3) + hz*(float(k-lo(3)) + half)
             do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               vel(i,j,k,1) = umid*(one+lamv*tanh(two*z/delta0))
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-               scal(i,j,k,1) = rmid*(one+lamr*tanh(two*z/delta0))
-               scal(i,j,k,2) = merge(one,zero,z.gt.zero)
-            enddo
-         enddo
-         enddo
+               y = xlo(2) + hy*(float(j-lo(2)) + half)
+               do i = lo(1), hi(1)
+                  x = xlo(1) + hx*(float(i-lo(1)) + half)
 
+                  vel(i,j,k,1) = adv_vel 
+                  vel(i,j,k,2) = zero
+                  vel(i,j,k,3) = zero
 
-      end subroutine initbrnrsh
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine inflowt(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
+                  scal(i,j,k,1) = denfact
 
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz, r_yz
+                  do n = 2,nscal-1
+                     scal(i,j,k,n) = one
+                  end do
 
-      REAL_T  eps_input, beta_input, rho_input
-      REAL_T  delta_input, kappa_input
-
-
-#include <probdata.H>
-      
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = adv_vel
-
-               scal(i,j,k,1) = denfact
-               scal(i,j,k,2) = zero
-
-               do n = 3,nscal
-                  scal(i,j,k,n) = one
+                  scal(i,j,k,nscal) = 1.
                end do
-
             end do
          end do
-      end do
 
-      end subroutine inflowt
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine taylorgreen(level,time,lo,hi,nscal, &
-     	 	             vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-      implicit none
+   end subroutine initflowpastcylinder
 
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist, pi
 
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-      pi = 4.d0*atan2(1.d0,1.d0)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) =  velfact*sin(x)*cos(y)*cos(z)
-               vel(i,j,k,2) = -velfact*cos(x)*sin(y)*cos(z)
-
-!c               vel(i,j,k,1) = sin(x-pi*0.5d0)*cos(y-pi)*cos(z-pi*0.5d0)
-!c               vel(i,j,k,2) = -cos(x-pi*0.5d0)*sin(y-pi)*cos(z-pi*0.5d0)
-               vel(i,j,k,3) = zero
-
-               scal(i,j,k,1) = denfact
-!c     This is the theoretical pressure perturbation from p_0
-               scal(i,j,k,2) = (denfact*velfact*velfact/16.d0)*(two+cos(two*z))*(cos(two*x)+cos(two*y))
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = one
-               end do
-                  
-!c 	       dist = sqrt((x-xblob)**2 + (y-yblob)**2 + (z-zblob)**2)
-!c	       scal(i,j,k,nscal) = merge(one,zero,dist.lt.radblob)
-	    end do
-         end do
-      end do
-
-      end subroutine taylorgreen
-!c
 !c ::: -----------------------------------------------------------
 !c
       subroutine swirl(level,time,lo,hi,nscal, &
@@ -2039,1489 +1122,19 @@ contains
                do n = 2,nscal-1
                   scal(i,j,k,n) = one
                end do
-                  
+
 	    end do
          end do
       end do
 
       end subroutine swirl
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine inithit(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  f_xlo, f_ylo, f_zlo
-      REAL_T  f_xhi, f_yhi, f_zhi
-      REAL_T  Lmin
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  twicePi, rn
-
-      REAL_T  xm, ym, zm, xp, yp, zp
-      REAL_T  cosxt, cosyt, coszt
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      twicePi = two*Pi
-
-      f_xlo = f_problo(1)
-      f_ylo = f_problo(2)
-      f_zlo = f_problo(3)
-      f_xhi = f_probhi(1)
-      f_yhi = f_probhi(2)
-      f_zhi = f_probhi(3)
-      Lmin= min( f_xhi-f_xlo, f_yhi-f_ylo, f_zhi-f_zlo)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         z = (z-f_zlo)/Lmin
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            y = (y-f_ylo)/Lmin
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               x = (x-f_xlo)/Lmin
-
-!c               if (turb_scale.gt.zero) then
-                  vel(i,j,k,1) = turb_scale * cos(twicePi*y)*cos(twicePi*z)
-                  vel(i,j,k,2) = turb_scale * cos(twicePi*x)*cos(twicePi*z)
-                  vel(i,j,k,3) = turb_scale * cos(twicePi*x)*cos(twicePi*y)
-!c               else
-!c                  vel(i,j,k,1) = cos(twicePi*y)*cos(twicePi*z)
-!c                  vel(i,j,k,2) = cos(twicePi*x)*cos(twicePi*z)
-!c                  vel(i,j,k,3) = cos(twicePi*x)*cos(twicePi*y)
-!c               endif
-
-!c               vel(i,j,k,1) = zero
-!c               vel(i,j,k,2) = zero
-!c               vel(i,j,k,3) = zero
-               
-               if (rhozero.gt.zero) then 
-                  scal(i,j,k,1) = rhozero
-               else
-                  scal(i,j,k,1) = one
-               endif
-               do n = 2,nscal
-                  if (abs(z-ref_centre).lt.ref_radius) then
-                     scal(i,j,k,n) = one
-                  else
-                     scal(i,j,k,n) = zero
-                  endif
-               end do
-                  
-	    end do
-         end do
-      end do
-
-      end subroutine inithit
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initinflow(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  twicePi, rn
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      twicePi = two*Pi
-
-      x_vel = zero
-      y_vel = zero
-      z_vel = zero
-      if (adv_dir.eq.1) then
-         x_vel = adv_vel
-      else if (adv_dir.eq.2) then
-         y_vel = adv_vel
-      else if (adv_dir.eq.3) then
-         z_vel = adv_vel
-      endif
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = x_vel
-               vel(i,j,k,2) = y_vel
-               vel(i,j,k,3) = z_vel
-               do n = 1, 3
-                  vel(i,j,k,n) = plateVel(x,y,z,n,0.d0)
-               end do
-               
-               scal(i,j,k,1) = one
-               do n = 2,nscal
-                  scal(i,j,k,n) = zero
-               end do
-                  
-	    end do
-         end do
-      end do
-
-      end subroutine initinflow
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initswirltest(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      integer    bc(SDIM,2)
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  twicePi, rn, plateVel
-
-#include <probdata.H>
-
-#ifdef BL_DO_FLCT
-      integer loFlctArray(SDIM), hiFlctArray(SDIM)
-      integer DIMDEC(uflct)
-      REAL_T  t_flct
-      REAL_T, allocatable :: uflct(:,:,:)
-      REAL_T, allocatable :: vflct(:,:,:)
-      REAL_T, allocatable :: wflct(:,:,:)
-#include <INFL_FORCE_F.H>
-#endif
-
-#ifdef BL_DO_FLCT
-      if (forceInflow) then
-         do i = 1, 3
-            loFlctArray(i) = lo(i)
-            hiFlctArray(i) = hi(i)
-         end do
-         loFlctArray(adv_dir) = 1
-         hiFlctArray(adv_dir) = 1
-         call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
-         allocate(uflct(DIMV(uflct)))
-         allocate(vflct(DIMV(uflct)))
-         allocate(wflct(DIMV(uflct)))
-         convVel = one
-      end if
-#endif
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-      print *, 'this is what I need ', lo(3), hi(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-#if 0
-#ifdef BL_DO_FLCT
-      if (forceInflow) then
-         t_flct = fluct_times(k+1)+1.d-12
-!c         t_flct = time
-         call INFL_FILL(FLCT_XVEL,DIMS(uflct),uflct,xlo,dx,t_flct,bc,domnlo,domnhi)
-         call INFL_FILL(FLCT_YVEL,DIMS(uflct),vflct,xlo,dx,t_flct,bc,domnlo,domnhi)
-         call INFL_FILL(FLCT_ZVEL,DIMS(uflct),wflct,xlo,dx,t_flct,bc,domnlo,domnhi)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = uflct(i,j,1)
-               vel(i,j,k,2) = vflct(i,j,1)
-               vel(i,j,k,3) = wflct(i,j,1)
-               
-               scal(i,j,k,1) = one
-               do n = 2,nscal
-                  scal(i,j,k,n) = zero
-               end do
-               
-	    end do
-         end do
-      end if
-#endif
-#else
-   
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = coflow_vel
-               
-               scal(i,j,k,1) = one
-               do n = 2,nscal
-                  scal(i,j,k,n) = zero
-               end do
-            end do
-         end do
-  
-     
-#endif
-      end do
-
-      end subroutine initswirltest
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initflow(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-      integer  bc(SDIM,2)
-      integer dir(SDIM), numholes(SDIM), idholes(SDIM)
-      REAL_T  holespace(SDIM)
-      REAL_T  dist(SDIM), loc(SDIM)
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  twicePi, rn
-      REAL_T cond 
-      REAL_T totHoleA
-      REAL_T jetVel, radius, sectarea
-#include <probdata.H>
-      
-      cond = 0.d0
-      dir(1) = 0
-      dir(2) = 0
-      dir(3) = 0
-      radius = 0.d0
-      jetVel = 0.d0
-      
-      twicePi = two*Pi
-      
-      numholes(1)= nHolesX 
-      numholes(2)= nHolesY 
-      numholes(3)= nHolesZ  
-      
-      totHoleA = numholes(1)*numholes(2)*numholes(3)*Pi*holeRad**2
-      
-      if (adv_dir.eq.1) then
-         dir(1) = 1
-      else if (adv_dir.eq.2) then
-         dir(2) = 1
-      else
-         dir(3) = 1
-      endif
-
-     
-      
-      sectarea = dir(1)*(domnhi(2) - domnlo(2))*(domnhi(3) - domnlo(3))+ &
-          dir(2)*(domnhi(1) - domnlo(1)) * (domnhi(3) - domnlo(3))+ &
-          dir(3)*(domnhi(1) - domnlo(1)) * (domnhi(2) - domnlo(2)) 
-       
-
-      do n = 1, 3 
-         holespace(n) = (domnhi(n) - domnlo(n)) / numholes(n)
-      end do
-    
-      jetVel = adv_vel*sectarea/totHoleA
-      
-      do k = lo(3), hi(3)
-         loc(3) = xlo(3) + dx(3)*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            loc(2) = xlo(2) + dx(2)*(float(j-lo(2)) + half)
-	    do   i = lo(1), hi(1)
-               loc(1) = xlo(1) + dx(1)*(float(i-lo(1)) + half)
-               
-               do n = 1, 3
-                  idholes(n) = INT(loc(n)/holespace(n))
-                  dist(n) = loc(n) - (idholes(n) + half)*holespace(n)
-                  vel(i,j,k, n) = 0.d0
-               end do
-
-               radius = SQRT(dir(1)*(dist(2)**2 + dist(3)**2)+ &
-                   dir(2)*(dist(1)**2 + dist(3)**2) + &
-                   dir(3)*(dist(1)**2 + dist(2)**2))
-               
-               if (radius.le.holeRad) then
-                  call blutilrand(rn)
-                  do n = 1, 3
-                     vel(i,j,k, n) =dir(n)*(jetVel + &
-                         0.01*sin(twicePi*(loc(n)/(domnhi(n)-domnlo(n)) + rn ))) 
-                  end do
-               endif
-               
-               scal(i,j,k,1) = one
-               do n = 2,nscal
-                  scal(i,j,k,n) = zero
-               end do
-               
-	    end do
-         end do
-      end do
-     
-      end subroutine initflow
-!c     
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initjet(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  twicePi, rn
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = coflow_vel
-
-               scal(i,j,k,1) = coflow_rho
-               scal(i,j,k,2) = merge(one,zero,abs(x-jet_x).le.jet_width .and. z.le.jet_width)
-
-               if (nscal.ge.3) then 
-                  do n = 3,nscal
-                     scal(i,j,k,n) = zero
-                  end do
-               endif
-
-	    end do
-         end do
-      end do
-
-      end subroutine initjet
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initinjection(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  twicePi, rn
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-
-               scal(i,j,k,1) = rhozero
-               scal(i,j,k,2) = zero
-
-               if (nscal.ge.3) then 
-                  do n = 3,nscal
-                     scal(i,j,k,n) = zero
-                  end do
-               endif
-
-	    end do
-         end do
-      end do
-
-      end subroutine initinjection
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initroundjet(level,time,lo,hi,nscal, &
-      	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                     dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z, r, r2
-      REAL_T  hx, hy, hz
-      REAL_T  dist
-      REAL_T  x_vel, y_vel, z_vel
-      REAL_T  twicePi, rn
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               if (plane_jet.eq.1) then
-                  r = abs(x-jet_x)
-                  r2= r*r
-               else
-                  r2= (x-jet_x)*(x-jet_x)+(y-jet_y)*(y-jet_y)
-                  r = sqrt(r2)
-               endif
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = coflow_vel
-
-               scal(i,j,k,1) = coflow_rho
-               scal(i,j,k,2) = merge(one,zero,sqrt(r2+z*z).le.jet_width+hx)
-
-               if (nscal.ge.3) then 
-                  do n = 3,nscal
-                     scal(i,j,k,n) = zero
-                  end do
-               endif
-
-	    end do
-         end do
-      end do
-
-      end subroutine initroundjet
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initcoriolis(level,time,lo,hi,nscal, &
-     	 	              vel,scal,DIMS(state),press,DIMS(press), &
-                             dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n, m
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  Lx, Ly, Lz
-
-      integer nx, mx, mn
-!c     nx is the number of modes to use for velocity perturbation
-      parameter (nx=16)
-!c     mx is the maximum wavenumber in each direction to choose random modes from
-      parameter (mx=8)
-!c     mn is the miniimum wavenumber in each direction to choose random modes from
-      parameter (mn=4)
-!c     a,b,c are random amplitudes in the range (0,1)
-      REAL_T  a(nx,SDIM),b(nx,SDIM),c(nx,SDIM),rn
-!c     d,e,f are random modes in the range (1,mx)
-      integer d(nx,SDIM),e(nx,SDIM),f(nx,SDIM)
-
-      integer isioproc
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      Lx = f_probhi(1)-f_problo(1)
-      Ly = f_probhi(1)-f_problo(1)
-      Lz = min(ref_height-f_problo(1),f_probhi(1)-f_problo(1))
-
-      call bl_pd_is_ioproc(isioproc)
-
-      call blutilinitrand(blrandseed)
-      do n = 1, nx
-         do m = 1,3
-            call blutilrand(rn)
-            a(n,m) = rn
-            call blutilrand(rn)
-            b(n,m) = rn
-            call blutilrand(rn)
-            c(n,m) = rn
-            call blutilrand(rn)
-            d(n,m) = mn+int(rn*mx+one)
-            call blutilrand(rn)
-            e(n,m) = mn+int(rn*mx+one)
-            call blutilrand(rn)
-            f(n,m) = mn+int(rn*mx+one)
-         enddo
-      enddo
-      if (lo(1).eq.0.and.lo(2).eq.0.and.lo(3).eq.0.and.isioproc.eq.1) then
-         write (6,*) "a",a
-         write (6,*) "b",b
-         write (6,*) "c",c
-         write (6,*) "d",d
-         write (6,*) "e",e
-         write (6,*) "f",f
-      endif
-      do k = lo(3), hi(3)
-         z = ( xlo(3) + hz*(float(k-lo(3)) + half) )
-         do j = lo(2), hi(2)
-            y = ( xlo(2) + hy*(float(j-lo(2)) + half) )
-	    do i = lo(1), hi(1)
-               x = ( xlo(1) + hx*(float(i-lo(1)) + half) )
-
-               vel(i,j,k,1)  =  omega*y
-               vel(i,j,k,2)  = -omega*x
-               vel(i,j,k,3)  = zero
-
-               if (ref_height.gt.zero.and.z.gt.ref_height) then
-!c     Maybe try a real free surface? Let's soften the blow with a hyperbolic tangent though
-!c     To run without the free surface, make sure ref_height is greater than the top of the box
-                  scal(i,j,k,1) = half*rhozero*((one+denfact)-(one-denfact)*tanh((z-ref_height)/(two*delta0)))
-                  scal(i,j,k,2) = zero
-                  do n = 2,nscal-1
-                     scal(i,j,k,n) = zero
-                  enddo
-               else
-                  do n = 1, nx
-                     do m = 1, SDIM
-                        vel(i,j,k,m) = vel(i,j,k,m) + turb_scale* &
-                            a(n,m)*sin(two*Pi*d(n,m)*(x-f_problo(1))/Lx)* &
-                            b(n,m)*sin(two*Pi*e(n,m)*(y-f_problo(2))/Ly)* &
-                            c(n,m)*sin(two*Pi*f(n,m)*(z-f_problo(3))/Lz)
-                     enddo
-                  enddo
-!c     Let's add a stratification
-                  if (rhograd.lt.zero) then
-                     scal(i,j,k,1) = rhozero + rhograd*z
-                  else
-                     scal(i,j,k,1) = rhozero
-                  endif
-                  do n = 2,nscal-1
-                     scal(i,j,k,n) = zero
-                  end do
-               endif
-                  
-	    end do
-         end do
-      end do
-
-      end subroutine initcoriolis
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initheating(level,time,lo,hi,nscal, &
-     	 	             vel,scal,DIMS(state),press,DIMS(press),  &
-                            dx,xlo,xhi) 
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      integer ii,jj,kk,nn
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  dist, pi
-
-      REAL_T  xx, yy, zz
-      REAL_T  hxx, hyy, hzz, ds
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      nn = 8
-      ds = one/float(nn*nn*nn)
-      hxx = hx/float(nn)
-      hyy = hy/float(nn)
-      hzz = hz/float(nn)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)))
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)))
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)))
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-
-               scal(i,j,k,1) = rhozero
-               scal(i,j,k,2) = zero
-               scal(i,j,k,3) = zero
-
-               do kk = 1, nn
-                  zz = z + hzz*(float(kk) - half)
-                  do jj = 1, nn
-                     yy = y + hyy*(float(jj) - half)
-                     do ii = 1, nn
-                        xx = x + hxx*(float(ii) - half)
-                        if (sqrt((xx-0.25)*(xx-0.25)+yy*yy+(zz+0.25)*(zz+0.25)).lt.0.1) then
-                           scal(i,j,k,2) = scal(i,j,k,2) + ds
-                        endif
-                        if (sqrt((xx+0.25)*(xx+0.25)+yy*yy+(zz+0.25)*(zz+0.25)).lt.0.1) then
-                           scal(i,j,k,3) = scal(i,j,k,3) + ds
-                        endif                        
-                     enddo
-                  enddo
-               enddo
-	    end do
-         end do
-      end do
-
-      end subroutine initheating
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initgravitycurrent(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, l, n, m, mdp_trace_counter,mdp_mod
-
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  mdp_lock_Z_start,mdp_lock_Z_finish, &
-             mdp_lock_X_start,mdp_lock_X_finish, &
-             mdp_lock_Y_start,mdp_lock_Y_finish, &
-             mdp_lock_density,mdp_ambient_density_at_base, &
-             mdp_delta_den,mdp_z_max
-      REAL_T  hz0, zOhz0
-
-      integer x_modes, y_modes, z_modes, amps
-      REAL_T  aja_pert, Lx, Ly, Lz, lambda_min, lambda_max, lambda_x, lambda_y, lambda_z, lambda, rn, cx, cy, cz
-      REAL_T  aja_pert_min, aja_pert_max, amp_rms
-      REAL_T  amp(-32:32,-32:32,-32:32)
-      REAL_T  phs(-32:32,-32:32,-32:32,3)
-
-      character tmp*10
-
-#include <probdata.H>
-
-      mdp_trace_counter=0
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-!c     To get stratification consistent with old way
-      hz0 = 0.3d0/64.0d0
-
-      open(33,file="gc.data")
-      read(33,'(A10)')tmp
-      read(33,*)mdp_lock_X_start
-      read(33,*)mdp_lock_X_finish
-      read(33,*)mdp_lock_Y_start
-      read(33,*)mdp_lock_Y_finish
-      read(33,*)mdp_lock_Z_start
-      read(33,*)mdp_lock_Z_finish
-      read(33,*)mdp_lock_density
-      read(33,*)mdp_ambient_density_at_base
-      read(33,*)mdp_delta_den
-      read(33,*)mdp_z_max
-      close(33)
-
-      write (*,*) xlo(1),xhi(1)
-      
-      if (mdp_lock_X_finish.ge.xlo(1) .and. mdp_lock_X_start.le.xhi(1)) then
-
-         call blutilinitrand(blrandseed)
-         
-         Lx = mdp_lock_X_finish - mdp_lock_X_start
-         Ly = mdp_lock_Y_finish - mdp_lock_Y_start
-         Lz = mdp_lock_Z_finish - mdp_lock_Z_start
-         
-         lambda_min = 0.01875d0
-         lambda_max = 0.07500d0
-
-         write (*,*) "lambda_min = ",lambda_min
-         write (*,*) "lambda_max = ",lambda_max
-         
-         x_modes = int( 0.5 + Lx / lambda_min )
-         y_modes = int( 0.5 + Ly / lambda_min )
-         z_modes = int( 0.5 + Lz / lambda_min )
-         
-         if (x_modes.gt.32) x_modes=32
-         if (y_modes.gt.32) y_modes=32
-         if (z_modes.gt.32) z_modes=32
-
-         write (*,*) "x_modes = ",x_modes
-         write (*,*) "y_modes = ",y_modes
-         write (*,*) "z_modes = ",z_modes
-         
-         amps = 0
-         amp_rms = zero
-         
-         do l = -x_modes, x_modes
-            if (x_modes.eq.0) then
-               lambda_x=zero
-            else
-               lambda_x = Lx / float(m)
-            endif
-            
-            do m = -y_modes, y_modes
-               if (y_modes.eq.0) then
-                  lambda_y=zero
-               else
-                  lambda_y = Ly / float(m)
-               endif
-               
-               do n = -z_modes, z_modes
-                  if (z_modes.eq.0) then
-                     lambda_z=zero
-                  else
-                     lambda_z = Lz / float(n)
-                  endif
-                  
-                  lambda = sqrt( lambda_x*lambda_x + lambda_y*lambda_y + lambda_z*lambda_z )
-                  
-                  if (lambda .ge. lambda_min .and. lambda .le. lambda_max) then
-                     call blutilrand(rn)
-                     amp(l,m,n) = two*(rn-half)*lambda*lambda
-                     call blutilrand(rn)
-                     phs(l,m,n,1) = two*Pi*rn
-                     call blutilrand(rn)
-                     phs(l,m,n,2) = two*Pi*rn
-                     call blutilrand(rn)
-                     phs(l,m,n,3) = two*Pi*rn
-                     write (*,*) amp(l,m,n),phs(l,m,n,1),phs(l,m,n,2),phs(l,m,n,3)
-                     amps = amps + 1
-                  else
-                     amp(l,m,n) = zero
-                  end if
-               end do
-            end do
-         end do
-
-         write (*,*) "amps = ",amps
-         
-!c     Need to integrate over the lock volume to normalise the perturbation
-         
-         write (*,*) int(0.5+Lx/hx)
-         write (*,*) int(0.5+Ly/hy)
-         write (*,*) int(0.5+Lz/hz)
-
-         amp_rms = zero
-
-         do k = 1,int(0.5+Lz/hz)
-            z = hz*(float(k) + half)/Lz
-            do j = 1,int(0.5+Ly/hy)
-               y = hy*(float(j) + half)/Ly
-               do i = 1,int(0.5+Lx/hx)
-                  x = hx*(float(i) + half)/Lx
-                  aja_pert = zero
-                  do l = -x_modes, x_modes
-                     do m = -y_modes, y_modes
-                        do n = -z_modes, z_modes
-                           if (abs(amp(l,m,n)).gt.zero) then
-                              cx = cos(2*Pi*l*(x-mdp_lock_X_start)/Lx+phs(l,m,n,1))
-                              cy = cos(2*Pi*m*(y-mdp_lock_Y_start)/Ly+phs(l,m,n,2))
-                              cz = cos(2*Pi*n*(z-mdp_lock_Z_start)/Lz+phs(l,m,n,3))
-                              aja_pert = aja_pert + denfact*amp(l,m,n)*cx*cy*cz
-                           endif
-                        end do
-                     end do
-                  end do
-                  amp_rms = amp_rms + aja_pert*aja_pert
-               end do
-            end do
-         end do
-
-         write (*,*) "amp_rms = ",amp_rms
-
-         aja_pert_min = 1.d10
-         aja_pert_max = -aja_pert_min
-
-      endif
-      
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         zOhz0 = abs((z-0.3d0)/hz0+half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-	       vel(i,j,k,1) =  zero
-	       vel(i,j,k,2) =  zero
-	       vel(i,j,k,3) =  zero
-
-               if(x.ge.mdp_lock_X_start.and.x.le.mdp_lock_X_finish.and. &
-                   y.ge.mdp_lock_Y_start.and.y.le.mdp_lock_Y_finish.and. &
-                   z.ge.mdp_lock_Z_start.and.z.le.mdp_lock_Z_finish)then
-
-                  scal(i,j,k,1) = mdp_lock_density
-                  scal(i,j,k,2) = zero
-                  mdp_mod=(i+j+k)
-
-!c                  if (mod(mdp_mod,10).eq.0)then
-!c                     mdp_trace_counter=mdp_trace_counter+1
-!c                     scal(i,j,k,2) = mdp_trace_counter
-!c                  endif
-
-!c     if ( mdp_lock_X_finish-x .lt. hx+1d-6) then
-                  aja_pert = one
-                  do l = -x_modes, x_modes
-                     do m = -y_modes, y_modes
-                        do n = -z_modes, z_modes
-                           if (abs(amp(l,m,n)).gt.zero) then
-                              cx = cos(2*Pi*l*(x-mdp_lock_X_start)/Lx+phs(l,m,n,1))
-                              cy = cos(2*Pi*m*(y-mdp_lock_Y_start)/Ly+phs(l,m,n,2))
-                              cz = cos(2*Pi*n*(z-mdp_lock_Z_start)/Lz+phs(l,m,n,3))
-                              aja_pert = aja_pert + denfact*amp(l,m,n)*cx*cy*cz
-                           endif
-                        end do
-                     end do
-                  end do
-                  scal(i,j,k,1) = scal(i,j,k,1)*aja_pert
-                  if (aja_pert.gt.aja_pert_max) aja_pert_max=aja_pert
-                  if (aja_pert.lt.aja_pert_min) aja_pert_min=aja_pert
-!c     endif
-
-                  scal(i,j,k,2) = one
-                  
-               else
-
-!c     This is the old way with k
-!c                  scal(i,j,k,1) = mdp_ambient_density_at_base + (abs(k-mdp_z_max)*mdp_delta_den)
-!c     This is the new way with z, should be consistent and resoltion independent
-                  scal(i,j,k,1) = mdp_ambient_density_at_base + (zOhz0*mdp_delta_den)
-!c     if (i.eq.100.and.j.eq.30)then
-!c     write(*,*)'ZZZZZZZZZZ=',k,scal(i,j,k,1) 
-!c     endif
-
-                  scal(i,j,k,2) = zero
-                  
-               endif
-               
-            end do
-         end do
-      end do
-      
-      if (mdp_lock_X_finish.ge.xlo(1) .and. mdp_lock_X_start.le.xhi(1)) then
-         write (*,*) "pert min = ",aja_pert_min
-         write (*,*) "pert max = ",aja_pert_max
-      endif
-      
-      end subroutine initgravitycurrent
-
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initrayleightaylor(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz, hz0
-
-      integer  idum
-
-      integer x_modes, y_modes, amps, l, m
-      REAL_T  pert, Lx, Ly, Lz, lambda_x, lambda_y, lambda, random_number, cx, cy
-      REAL_T  pert_min, pert_max, amp_rms, frac
-      REAL_T  amp(-32:32,-32:32)
-      REAL_T  phs(-32:32,-32:32,2)
-      REAL_T  eta(state_l1:state_h1,state_l2:state_h2)
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      Lx = f_probhi(1)-f_problo(1)
-      Ly = f_probhi(2)-f_problo(2)
-      Lz = f_probhi(3)-f_problo(3)
-
-!c     Use hz0 for base resolution for consistency (only used in defining perturbation)
-      hz0 = Lz/512.d0
-
-      idum=-1
-      random_number = ran1(idum)
-!
-!c      write (*,*) "wavelength_min = ",wavelength_min
-!c      write (*,*) "wavelength_max = ",wavelength_max
-      
-      x_modes = int( 0.5 + Lx / wavelength_min )
-      y_modes = int( 0.5 + Ly / wavelength_min )
-      
-      if (x_modes.gt.32) x_modes=32
-      if (y_modes.gt.32) y_modes=32
-      
-      write (*,*) "x_modes = ",x_modes
-      write (*,*) "y_modes = ",y_modes
-      
-      amps = 0
-      amp_rms = zero
-      
-      do l = -x_modes, x_modes
-         if (x_modes.eq.0) then
-            lambda_x=zero
-         else
-            lambda_x = Lx / float(l)
-         endif
-            
-         do m = -y_modes, y_modes
-            if (y_modes.eq.0) then
-               lambda_y=zero
-            else
-               lambda_y = Ly / float(m)
-            endif
-            
-            lambda = sqrt( lambda_x*lambda_x + lambda_y*lambda_y )
-            
-            if (lambda .ge. wavelength_min .and. lambda .le. wavelength_max) then
-               amp(l,m) = two*(ran1(idum)-half)*lambda*lambda
-               phs(l,m,1) = two*Pi*ran1(idum)
-               phs(l,m,2) = two*Pi*ran1(idum)
-               amps = amps + 1
-            else
-               amp(l,m) = zero
-            end if
-
-         end do
-      end do
-      
-      write (*,*) "amps = ",amps
-         
-!c     Need to integrate to normalise the perturbation
-      amp_rms = zero
-      do j = 1,int(0.5+Ly/hy)
-         y = hy*(float(j) + half)/Ly
-         do i = 1,int(0.5+Lx/hx)
-            x = hx*(float(i) + half)/Lx
-            pert = zero
-            do l = -x_modes, x_modes
-               do m = -y_modes, y_modes
-                  if (abs(amp(l,m)).gt.zero) then
-                     cx = cos(2*Pi*float(l)*x/Lx+phs(l,m,1))
-                     cy = cos(2*Pi*float(m)*y/Ly+phs(l,m,2))
-                     pert = pert + amp(l,m)*cx*cy
-                  endif
-               end do
-            end do
-            amp_rms = amp_rms + pert*pert
-         end do
-      end do
-      
-      amp_rms = sqrt(amp_rms*hx*hy/(Lx*Ly))
-
-      write (*,*) "amp_rms = ",amp_rms
-
-      do l = -x_modes, x_modes
-         do m = -y_modes, y_modes
-            amp(l,m) = density_pert*hz0*amp(l,m)/amp_rms
-         enddo
-      enddo
-      
-      pert_min = 1.d10
-      pert_max = -pert_min
-
-      do j = lo(2), hi(2)
-         y = xlo(2) + hy*(float(j-lo(2)) + half)
-         do i = lo(1), hi(1)
-            x = xlo(1) + hx*(float(i-lo(1)) + half)
-            pert = zero
-            do l = -x_modes, x_modes
-               do m = -y_modes, y_modes
-                  if (abs(amp(l,m)).gt.zero) then
-                     cx = cos(2*Pi*float(l)*x/Lx+phs(l,m,1))
-                     cy = cos(2*Pi*float(m)*y/Ly+phs(l,m,2))
-                     pert = pert + amp(l,m)*cx*cy
-                  endif
-               end do
-            end do
-            eta(i,j) = pert
-            if (pert.gt.pert_max) pert_max=pert
-            if (pert.lt.pert_min) pert_min=pert
-         end do
-      end do
-      
-      write (*,*) "pert_min/hz = ",pert_min/hz
-      write (*,*) "pert_max/hz = ",pert_max/hz
-
-!c     Go to work...
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half) - interface_height
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               
-!c     Set velocities to zero if required
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-               
-               if (abs(z-eta(i,j)).lt.half*hz) then
-                  frac = half+(eta(i,j)-z)/hz
-                  scal(i,j,k,1) = den1*(one-frac) + den2*frac
-               else
-                  if (z.gt.zero) then
-                     scal(i,j,k,1) = den1
-                  else
-                     scal(i,j,k,1) = den2
-                  endif
-               endif
-
-!c     Set a tracer on the interface
-               if (abs(z).lt.half*tracer_height) then
-                  scal(i,j,k,2) = one
-               else
-                  scal(i,j,k,2) = zero
-               endif
-
-            enddo
-         enddo
-      enddo
-
-      end subroutine initrayleightaylor
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initraneul(level,time,lo,hi,nscal, &
-     	 	       vel,scal,DIMS(state),press,DIMS(press), &
-                      dx,xlo,xhi)
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n, ifx, jfx, kfx
-      integer ift,jft,kft
-      REAL_T  x, y, z
-      REAL_T  sinx, siny, sinz
-      REAL_T  cosx, cosy, cosz
-      REAL_T  keng
-      REAL_T  hx, hy, hz
-      REAL_T  piloc
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-      piloc = 4.d0*atan2(1.d0,1.d0)
-
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-
-!c              do kfx = 1, eul_nfreq
-!c              do jfx = 1, eul_nfreq
-!c              do ifx = 1, eul_nfreq
-               do kft = 1, eul_nfreq
-               do jft = 1, eul_nfreq
-               do ift = 1, eul_nfreq
-                  ifx = ift-1
-                  jfx = jft-1
-                  kfx = kft-1
-
-                  sinx = sin(2.d0*piloc*dfloat(ifx)*x + eul_ranphase(ifx,jfx,kfx,1))
-                  siny = sin(2.d0*piloc*dfloat(jfx)*y + eul_ranphase(ifx,jfx,kfx,2))
-                  sinz = sin(2.d0*piloc*dfloat(kfx)*z + eul_ranphase(ifx,jfx,kfx,3))
-                  cosx = dfloat(ifx)* cos(2.d0*piloc*dfloat(ifx)*x + eul_ranphase(ifx,jfx,kfx,1))
-                  cosy = dfloat(jfx)* cos(2.d0*piloc*dfloat(jfx)*y + eul_ranphase(ifx,jfx,kfx,2))
-                  cosz = dfloat(kfx)* cos(2.d0*piloc*dfloat(kfx)*z + eul_ranphase(ifx,jfx,kfx,3))
-
-                  vel(i,j,k,1) = vel(i,j,k,1) &
-                     + eul_ranampl(ifx,jfx,kfx,3)*sinx*cosy*sinz &
-                     - eul_ranampl(ifx,jfx,kfx,2)*sinx*siny*cosz
-                  vel(i,j,k,2) = vel(i,j,k,2)  &
-                     + eul_ranampl(ifx,jfx,kfx,1)*sinx*siny*cosz &
-                     - eul_ranampl(ifx,jfx,kfx,3)*cosx*siny*sinz
-                  vel(i,j,k,3) = vel(i,j,k,3)  &
-                     + eul_ranampl(ifx,jfx,kfx,2)*cosx*siny*sinz &
-                     - eul_ranampl(ifx,jfx,kfx,1)*sinx*cosy*sinz
-               
-               enddo
-               enddo
-               enddo
-
-               vel(i,j,k,1) = eul_pertamp*vel(i,j,k,1)
-               vel(i,j,k,2) = eul_pertamp*vel(i,j,k,2)
-               vel(i,j,k,3) = eul_pertamp*vel(i,j,k,3)
-               
-               scal(i,j,k,1) = one
-               do n = 2,nscal
-                     scal(i,j,k,n) = one
-               end do
-                  
-	    end do
-         end do
-      end do
-
-      end subroutine initraneul
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initdenadvect(level,time,lo,hi,nscal, &
-     	 	               vel,scal,DIMS(state),press,DIMS(press), &
-          dx,xlo,xhi) 
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-	    do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-
-               vel(i,j,k,1) = one
-               vel(i,j,k,2) = one
-               vel(i,j,k,3) = one
-
-               scal(i,j,k,1) = one
-               scal(i,j,k,2) = zero
-
-               do n = 2,nscal-1
-                  scal(i,j,k,n) = zero
-               end do
-
-	    end do
-         end do
-      end do
-
-!c     initialize a block of tracer
-      scal(7,7,7,2) = 1.0d0
-      scal(7,7,8,2) = 1.0d0
-      scal(7,8,7,2) = 1.0d0
-      scal(7,8,8,2) = 1.0d0
-      scal(8,7,7,2) = 1.0d0
-      scal(8,7,8,2) = 1.0d0
-      scal(8,8,7,2) = 1.0d0
-      scal(8,8,8,2) = 1.0d0
-
-      end subroutine initdenadvect
-!c
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initshearlayer(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z, t
-      REAL_T  hx, hy, hz
-      REAL_T  Lx, Ly, Lz
-      REAL_T  z0
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      Lx = f_probhi(1)-f_problo(1)
-      Ly = f_probhi(2)-f_problo(2)
-      Lz = f_probhi(3)-f_problo(3)
-
-!c     Go to work...
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               
-               t = time-half*x*(vel1+vel2)
-               z0 = interface_height
-               do n = 1, 10
-                  z0 = z0 + mag(n)*cos(freq(n)*t+phi1(n))*cos(float(n)*y/Ly+phi2(n))
-               enddo
-
-               vel(i,j,k,1) = half*((vel1+vel2)+(vel1-vel2)*tanh(two*(z-z0)/delta0))
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-
-               scal(i,j,k,1) = half*((den1+den2)+(den1-den2)*tanh(two*(z-z0)/delta0))
-               scal(i,j,k,2) = exp(-((z-interface_height)/delta0)**2)
-
-            enddo
-         enddo
-      enddo
-
-      end subroutine initshearlayer
-!c
-!c ::: -----------------------------------------------------------
-!c
-      subroutine initiwpctm(level,time,lo,hi,nscal, &
-                            vel,scal,DIMS(state),press,DIMS(press), &
-                            dx,xlo,xhi)
-
-      implicit none
-
-      integer    level, nscal
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(state)
-      integer    DIMDEC(press)
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     vel(DIMV(state),SDIM)
-      REAL_T    scal(DIMV(state),nscal)
-      REAL_T   press(DIMV(press))
-!c
-!c     ::::: local variables
-!c
-      integer i, j, k, n
-      REAL_T  x, y, z, t
-      REAL_T  hx, hy, hz
-      REAL_T  Lx, Ly, Lz
-      REAL_T  z0
-
-#include <probdata.H>
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      Lx = f_probhi(1)-f_problo(1)
-      Ly = f_probhi(2)-f_problo(2)
-      Lz = f_probhi(3)-f_problo(3)
-
-!c     Go to work...
-      do k = lo(3), hi(3)
-         z = xlo(3) + hz*(float(k-lo(3)) + half)
-         do j = lo(2), hi(2)
-            y = xlo(2) + hy*(float(j-lo(2)) + half)
-            do i = lo(1), hi(1)
-               x = xlo(1) + hx*(float(i-lo(1)) + half)
-               
-               vel(i,j,k,1) = zero
-               vel(i,j,k,2) = zero
-               vel(i,j,k,3) = zero
-
-               z0 = 0.01*(cos(two*Pi*x)+cos(two*Pi*y))
-
-               if (z.gt.z0) then
-                  scal(i,j,k,1) = den1
-                  scal(i,j,k,2) = one
-               else
-                  scal(i,j,k,1) = den2
-                  scal(i,j,k,2) = zero
-               endif
-
-               scal(i,j,k,1) = half*(den1+den2)+half*(den1-den2)*tanh((z-z0)/delta0)
-               
-            enddo
-         enddo
-      enddo
-
-      end subroutine initiwpctm
 
 !c     ::: -----------------------------------------------------------
-!c     ::: This routine will tag high error cells based on the 
+!c     ::: This routine will tag high error cells based on the
 !c     ::: magnitude or gradient of the density
-!c     ::: 
+!c     :::
 !c     ::: INPUTS/OUTPUTS:
-!c     ::: 
+!c     :::
 !c     ::: tag      <=  integer tag array
 !c     ::: DIMS(tag) => index extent of tag array
 !c     ::: set       => integer value to tag cell for refinement
@@ -3577,6 +1190,27 @@ contains
                end do
             end do
          end do
+      else if ( probtype .eq. 32 ) then
+         select case (adv_dir)
+         case (1)
+            do i = lo(1), hi(1)
+               if (i<domhi(1)/2) then
+                  tag(i,:,:) = set
+               end if
+            end do
+         case (2)
+            do j = lo(2), hi(2)
+               if (i<domhi(2)/2) then
+                  tag(:,j,:) = set
+               end if
+            end do
+         case (3)
+            do k = lo(3), hi(3)
+               if (i<domhi(3)/2) then
+                  tag(:,:,k) = set
+               end if
+            end do
+         end select
       else
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
@@ -3590,11 +1224,11 @@ contains
       end subroutine FORT_DENERROR
 
 !c ::: -----------------------------------------------------------
-!c ::: This routine will tag high error cells based on the 
+!c ::: This routine will tag high error cells based on the
 !c ::: magnitude of the tracer
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: tag      <=  integer tag array
 !c ::: DIMS(tag) => index extent of tag array
 !c ::: set       => integer value to tag cell for refinement
@@ -3766,7 +1400,7 @@ contains
       else if (probtype .eq. 15) then
 
       else if (probtype .eq. 16) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3776,7 +1410,7 @@ contains
         end do
 
       else if (probtype .eq. 17) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3811,7 +1445,7 @@ contains
               enddo
            endif
         endif
-        
+
       else if (probtype .eq. 18) then
 
         if (ref_height2.gt.0 .and. level.eq.1) then
@@ -3819,7 +1453,7 @@ contains
         else
            rh = ref_height
         endif
- 
+
         do k = lo(3), hi(3)
            z = xlo(3) + dx(3)*(float(k-lo(3)) + half)
            if (z.lt.rh) then
@@ -3832,7 +1466,7 @@ contains
         end do
 
       else if (probtype .eq. 19) then
- 
+
         do k = lo(3), hi(3)
            z = xlo(3) + dx(3)*(float(k-lo(3)) + half)
            if (z.lt.ref_height) then
@@ -3845,7 +1479,7 @@ contains
         end do
 
       else if (probtype .eq. 20) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3853,9 +1487,9 @@ contains
               end do
            end do
         end do
-        
+
       else if (probtype .eq. 21) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3863,9 +1497,9 @@ contains
               end do
            end do
         end do
-        
+
       else if (probtype .eq. 22) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3873,9 +1507,9 @@ contains
               end do
            end do
         end do
-        
+
       else if (probtype .eq. 23) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3883,9 +1517,9 @@ contains
               end do
            end do
         end do
-        
+
       else if (probtype .eq. 24) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3893,9 +1527,9 @@ contains
               end do
            end do
         end do
-        
+
       else if (probtype .eq. 25) then
- 
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
@@ -3903,12 +1537,22 @@ contains
               end do
            end do
         end do
-        
+
+      else if (probtype .eq. 31) then
+
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
+                 tag(i,j,k) = merge(set,tag(i,j,k),adv(i,j,k,1).gt.adverr)
+              end do
+           end do
+        end do
+
       else
         print *,'DONT KNOW THIS PROBTYPE IN FORT_ADVERROR ',probtype
         stop
       end if
- 
+
       end subroutine FORT_ADVERROR
 
       subroutine FORT_ADV2ERROR (tag,DIMS(tag),set,clear, &
@@ -3943,8 +1587,8 @@ contains
          print *,'DONT KNOW THIS PROBTYPE IN FORT_ADVERROR ',probtype
          stop
       end if
-      
-      end subroutine FORT_ADV2ERROR 
+
+      end subroutine FORT_ADV2ERROR
 
 !c ::: -----------------------------------------------------------
 !c ::: This routine will tag high error cells based on the
@@ -4068,11 +1712,11 @@ contains
 
       end subroutine FORT_TEMPERROR
 !c ::: -----------------------------------------------------------
-!c ::: This routine will tag high error cells based on the 
+!c ::: This routine will tag high error cells based on the
 !c ::: magnitude of vorticity
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: tag      <=  integer tag array
 !c ::: DIMS(tag) => index extent of tag array
 !c ::: set       => integer value to tag cell for refinement
@@ -4390,6 +2034,17 @@ contains
               end do
            end do
          end do
+ 
+      else if (probtype .eq. 32) then
+
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  tag(i,j,k) = merge(set,tag(i,j,k),abs(vort(i,j,k,1)).gt.vorterr)
+               end do
+            end do
+         end do
+
 
       else
         print *,'DONT KNOW THIS PROBTYPE IN FORT_MVERROR ',probtype
@@ -4404,13 +2059,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: rho      <=  density array
 !c ::: DIMS(rho) => index extent of rho array
 !c ::: domlo,hi  => index extent of problem domain
@@ -4569,7 +2224,7 @@ contains
                end do
 	    end do
 	 end do
-      end if         
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(rho).lt.domlo(2)) then
          do j = ARG_L2(rho), domlo(2)-1
@@ -4579,7 +2234,7 @@ contains
                end do
             end do
          end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(rho).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(rho)
@@ -4589,7 +2244,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(rho).lt.domlo(3)) then
          if (probtype.eq.15) then
@@ -4626,7 +2281,7 @@ contains
                  y = xlo(2) + dx(2)*(float(j-lo(2)) + half)
                  do i = ARG_L1(rho), ARG_H1(rho)
                     x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
-                    if (plane_jet.eq.1) then 
+                    if (plane_jet.eq.1) then
                        r = abs(x-jet_x)
                     else
                        r = sqrt((x-jet_x)*(x-jet_x)+(y-jet_y)*(y-jet_y))
@@ -4661,7 +2316,7 @@ contains
            end do
         endif
       end if
-      
+
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(rho).gt.domhi(3)) then
          if (probtype.eq.17) then
             do k = domhi(3)+1, ARG_H3(rho)
@@ -4692,13 +2347,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: adv      <=  advected quantity array
 !c ::: DIMS(adv) => index extent of adv array
 !c ::: domlo,hi  => index extent of problem domain
@@ -4836,8 +2491,8 @@ contains
                   end do
                end do
             end do
-         end if            
-      end if            
+         end if
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(adv).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(adv)
@@ -4847,7 +2502,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(adv).lt.domlo(2)) then
          do j = ARG_L2(adv), domlo(2)-1
@@ -4857,7 +2512,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(adv).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(adv)
@@ -4867,7 +2522,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(adv).lt.domlo(3)) then
          if (probtype.eq.16) then
@@ -4892,7 +2547,7 @@ contains
                         adv(i,j,k) = merge(one,zero,r.le.jet_width)
                      else
                         adv(i,j,k) = zero
-                     endif                        
+                     endif
                   enddo
                enddo
             enddo
@@ -4902,7 +2557,7 @@ contains
                   y = xlo(2) + dx(2)*(float(j-lo(2)) + half)
                   do i = ARG_L1(adv), ARG_H1(adv)
                      x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt((x-jet_x)*(x-jet_x)+(y-jet_y)*(y-jet_y))
@@ -4911,7 +2566,7 @@ contains
                   enddo
                enddo
             enddo
-         else 
+         else
             do k = ARG_L3(adv), domlo(3)-1
                do j = ARG_L2(adv), ARG_H2(adv)
                   do i = ARG_L1(adv), ARG_H1(adv)
@@ -4919,7 +2574,7 @@ contains
                   end do
                end do
             end do
-         end if 
+         end if
       endif
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(adv).gt.domhi(3)) then
@@ -4939,7 +2594,7 @@ contains
       subroutine FORT_ADV2FILL (adv,DIMS(adv),domlo,domhi,dx, &
                                 xlo,time,bc )&
                                 bind(C, name="FORT_ADV2FILL")
-                                
+
       implicit none
 
       integer    DIMDEC(adv)
@@ -4950,7 +2605,7 @@ contains
       integer    lo(SDIM), hi(SDIM)
 
       integer    i, j, k
-      REAL_T  hx, hy, hz, gpert, z, y, x, ypert, magwif, constn,r 
+      REAL_T  hx, hy, hz, gpert, z, y, x, ypert, magwif, constn,r
 
       parameter (constn=.22089323)
 
@@ -4974,7 +2629,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(adv).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(adv)
@@ -4984,7 +2639,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(adv).lt.domlo(2)) then
          do j = ARG_L2(adv), domlo(2)-1
@@ -4994,7 +2649,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(adv).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(adv)
@@ -5004,7 +2659,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(adv).lt.domlo(3)) then
          if (probtype.eq.18) then
@@ -5013,7 +2668,7 @@ contains
                   y = xlo(2) + dx(2)*(float(j-lo(2)) + half)
                   do i = ARG_L1(adv), ARG_H1(adv)
                      x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt((x-jet_x)*(x-jet_x)+(y-jet_y)*(y-jet_y))
@@ -5022,7 +2677,7 @@ contains
                   enddo
                enddo
             enddo
-         else 
+         else
             do k = ARG_L3(adv), domlo(3)-1
                do j = ARG_L2(adv), ARG_H2(adv)
                   do i = ARG_L1(adv), ARG_H1(adv)
@@ -5030,9 +2685,9 @@ contains
                   end do
                end do
             end do
-         end if 
+         end if
       endif
-      
+
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(adv).gt.domhi(3)) then
          if (probtype.eq.17) then
             do k = domhi(3)+1, ARG_H3(adv)
@@ -5068,13 +2723,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: temp      <= temperature array
 !c ::: DIMS(temp)=> index extent of temp array
 !c ::: domlo,hi  => index extent of problem domain
@@ -5088,7 +2743,7 @@ contains
       subroutine FORT_TEMPFILL (temp,DIMS(temp),domlo,domhi,dx,&
                                 xlo,time,bc )&
                                 bind(C, name="FORT_TEMPFILL")
-                                
+
       implicit none
 
       integer    DIMDEC(temp)
@@ -5120,7 +2775,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(temp).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(temp)
@@ -5130,7 +2785,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(temp).lt.domlo(2)) then
          do j = ARG_L2(temp), domlo(2)-1
@@ -5140,7 +2795,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(temp).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(temp)
@@ -5150,7 +2805,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(temp).lt.domlo(3)) then
          if (probtype.eq.18) then
@@ -5159,7 +2814,7 @@ contains
                   y = xlo(2) + dx(2)*(float(j-lo(2)) + half)
                   do i = ARG_L1(temp), ARG_H1(temp)
                      x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt((x-jet_x)*(x-jet_x)+(y-jet_y)*(y-jet_y))
@@ -5177,7 +2832,7 @@ contains
                end do
             end do
          endif
-      end if 
+      end if
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(temp).gt.domhi(3)) then
          do k = domhi(3)+1, ARG_H3(temp)
@@ -5197,13 +2852,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: u        <=  x velocity array
 !c ::: DIMS(u)   => index extent of u array
 !c ::: domlo,hi  => index extent of problem domain
@@ -5271,7 +2926,7 @@ contains
 !c
          convVel = one
          t_flct = time
-         
+
          call INFL_FILL(FLCT_XVEL,DIMS(uflct),uflct,xlo,dx,t_flct,bc,domnlo,domnhi)
       end if
 #endif
@@ -5294,7 +2949,7 @@ contains
 
       if (adv_dir .eq. 1) then
          x_vel = adv_vel
-      else  
+      else
          x_vel = zero
       end if
 
@@ -5318,6 +2973,14 @@ contains
                   end do
                end do
             end do
+         else if (probtype.eq.32) then
+            do i = ARG_L1(u), domlo(1)-1
+               do k = ARG_L3(u), ARG_H3(u)
+                  do j = ARG_L2(u), ARG_H2(u)
+                     u(i,j,k) =  x_vel 
+                  end do
+               end do
+            end do
          else
             do i = ARG_L1(u), domlo(1)-1
                do k = ARG_L3(u), ARG_H3(u)
@@ -5326,8 +2989,8 @@ contains
                   end do
                end do
             end do
-         end if            
-      end if            
+         end if
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(u).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(u)
@@ -5337,7 +3000,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(u).lt.domlo(2)) then
          do j = ARG_L2(u), domlo(2)-1
@@ -5347,7 +3010,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(u).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(u)
@@ -5357,7 +3020,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(u).lt.domlo(3)) then
          if (probtype.eq.17) then
@@ -5382,7 +3045,7 @@ contains
                   y = domnlo(2) + (j+0.5)*dx(2)
                   do i = ARG_L1(u), ARG_H1(u)
                      x = domnlo(1) + (i+0.5)*dx(1)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt( (x-jet_x)*(x-jet_x) + (y-jet_y)*(y-jet_y) )
@@ -5408,13 +3071,13 @@ contains
 #ifdef BL_DO_FLCT
 !c     u(i,j,k) = u(i,j,k) + uflct(i,j,1)*turb_scale
                      u(i,j,k) = plateVel(x, y, z, 1, uflct(i,j,1))
-                     
+
 #endif
                   enddo
                enddo
             enddo
          else if (probtype.eq.28) then
-      
+
             do k = ARG_L3(u), domlo(3)-1
                z = domnlo(3) + (k+0.5)*dx(3)
                do j = ARG_L2(u), ARG_H2(u)
@@ -5427,14 +3090,14 @@ contains
                      if (r .le. 0.025) then
                         u(i,j,k) = uflct(i,j,1)
                      endif
-                    
+
 #endif
                   enddo
                enddo
             enddo
-            
 
-         else 
+
+         else
 
 
             if (probtype.eq.16) then
@@ -5471,8 +3134,8 @@ contains
                         x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
                         if (t.lt.ten) then
                            s = tenth*(one+fourth*(sin(two*Pi*x/jet_width)+sin(two*Pi*y/jet_width)))
-                           jv = jet_vel * (1-exp(-s*t*t)) 
-                        else 
+                           jv = jet_vel * (1-exp(-s*t*t))
+                        else
                            jv = jet_vel
                         endif
                         if (forceLo .and. adv_dir .eq. 3 .and. abs(x-jet_x).le.jet_width) then
@@ -5544,13 +3207,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: v        <=  y velocity array
 !c ::: DIMS(v)   => index extent of v array
 !c ::: domlo,hi  => index extent of problem domain
@@ -5563,7 +3226,7 @@ contains
 
       subroutine FORT_YVELFILL (v,DIMS(v),domlo,domhi,dx,xlo,time,bc)&
                                 bind(C, name="FORT_YVELFILL")
-                                
+
       implicit none
       integer    DIMDEC(v)
       integer    domlo(SDIM), domhi(SDIM)
@@ -5629,7 +3292,7 @@ contains
 
       if (adv_dir .eq. 2) then
          y_vel = adv_vel
-      else  
+      else
          y_vel = zero
       end if
 
@@ -5643,7 +3306,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(v).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(v)
@@ -5653,17 +3316,28 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(v).lt.domlo(2)) then
-         do j = ARG_L2(v), domlo(2)-1
-            do k = ARG_L3(v), ARG_H3(v)
-               do i = ARG_L1(v), ARG_H1(v)
-                  v(i,j,k) = y_vel
+         if (probtype.eq.32) then
+            do j = ARG_L2(v), domlo(2)-1
+               do k = ARG_L3(v), ARG_H3(v)
+                  do i = ARG_L1(v), ARG_H1(v)
+                     z = (xlo(3) + dx(3)*(float(k-lo(3)) + half))/m_probhi(3)
+                     v(i,j,k) =  6.0d0 * y_vel * z * (1.0d0 - z)
+                  end do
                end do
             end do
-	 end do
-      end if            
+         else
+            do j = ARG_L2(v), domlo(2)-1
+               do k = ARG_L3(v), ARG_H3(v)
+                  do i = ARG_L1(v), ARG_H1(v)
+                     v(i,j,k) = y_vel
+                  end do
+               end do
+            end do
+         end if
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(v).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(v)
@@ -5673,7 +3347,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(v).lt.domlo(3)) then
          if (probtype.eq.17) then
@@ -5698,7 +3372,7 @@ contains
                   y = domnlo(2) + (j+0.5)*dx(2)
                   do i = ARG_L1(v), ARG_H1(v)
                      x = domnlo(1) + (i+0.5)*dx(1)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt( (x-jet_x)*(x-jet_x) + (y-jet_y)*(y-jet_y) )
@@ -5745,7 +3419,7 @@ contains
                   enddo
                enddo
             enddo
-         else 
+         else
             if (probtype.eq.16) then
                t = time*jet_vel/jet_width
             endif
@@ -5780,8 +3454,8 @@ contains
                         x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
                         if (t.lt.ten) then
                            s = tenth*(one+fourth*(sin(two*Pi*x/jet_width)+sin(two*Pi*y/jet_width)))
-                           jv = jet_vel * (1-exp(-s*t*t)) 
-                        else 
+                           jv = jet_vel * (1-exp(-s*t*t))
+                        else
                            jv = jet_vel
                         endif
                         if (forceLo .and. adv_dir .eq. 3 .and. abs(x-jet_x).le.jet_width) then
@@ -5798,7 +3472,7 @@ contains
                end do
             end do
          endif
-      end if        
+      end if
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(v).gt.domhi(3)) then
          if (probtype.eq.17) then
@@ -5817,7 +3491,7 @@ contains
                   enddo
                enddo
             enddo
-         else 
+         else
             do k = domhi(3)+1, ARG_H3(v)
                do j = ARG_L2(v), ARG_H2(v)
                   do i = ARG_L1(v), ARG_H1(v)
@@ -5826,7 +3500,7 @@ contains
                end do
             end do
          endif
-      end if        
+      end if
 
 #ifdef BL_DO_FLCT
       if (forceInflow) deallocate(vflct)
@@ -5840,13 +3514,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: w        <=  z velocity array
 !c ::: DIMS(w)   => index extent of v array
 !c ::: domlo,hi  => index extent of problem domain
@@ -5859,7 +3533,7 @@ contains
 
       subroutine FORT_ZVELFILL (w,DIMS(w),domlo,domhi,dx,xlo,time,bc)&
                                 bind(C, name="FORT_ZVELFILL")
-                                
+
       implicit none
       integer    DIMDEC(w)
       integer    domlo(SDIM), domhi(SDIM)
@@ -5934,7 +3608,7 @@ contains
 
       if (adv_dir .eq. 3) then
          z_vel = adv_vel
-      else  
+      else
          z_vel = zero
       end if
 
@@ -5948,7 +3622,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(w).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(w)
@@ -5958,7 +3632,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(w).lt.domlo(2)) then
          do j = ARG_L2(w), domlo(2)-1
@@ -5968,7 +3642,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(w).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(w)
@@ -5978,7 +3652,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(w).lt.domlo(3)) then
          if (probtype.eq.17) then
@@ -6001,6 +3675,15 @@ contains
                   enddo
                enddo
             enddo
+         else if (probtype.eq.32) then
+            do k = ARG_L3(w), domlo(3)-1
+               do j = ARG_L2(w), ARG_H2(w)
+                  do i = ARG_L1(w), ARG_H1(w)
+                     x = (xlo(1) + dx(1)*(float(i-lo(1)) + half))/m_probhi(1)
+                     w(i,j,k) = 6.0d0 * z_vel * x * (1.0d0 - x)
+                  end do
+               end do
+            end do
 
          else if (probtype.eq.18) then
             do k = ARG_L3(w), domlo(3)-1
@@ -6008,7 +3691,7 @@ contains
                   y = domnlo(2) + (j+0.5)*dx(2)
                   do i = ARG_L1(w), ARG_H1(w)
                      x = domnlo(1) + (i+0.5)*dx(1)
-                     if (plane_jet.eq.1) then 
+                     if (plane_jet.eq.1) then
                         r = abs(x-jet_x)
                      else
                         r = sqrt( (x-jet_x)*(x-jet_x) + (y-jet_y)*(y-jet_y) )
@@ -6050,13 +3733,15 @@ contains
 #ifdef BL_DO_FLCT
                      if( r.le. 0.025) then
                        	w(i,j,k) = wflct(i,j,1)
-                     endif	       
+                     endif
 #endif
                   enddo
                enddo
             enddo
-            
-         else 
+
+
+
+         else
             if (probtype.eq.16) then
                t = time*jet_vel/jet_width
             endif
@@ -6084,8 +3769,8 @@ contains
                         x = xlo(1) + dx(1)*(float(i-lo(1)) + half)
                         if (t.lt.ten) then
                            s = tenth*(one+fourth*(sin(two*Pi*x/jet_width)+sin(two*Pi*y/jet_width)))
-                           jv = jet_vel * (1-exp(-s*t*t)) 
-                        else 
+                           jv = jet_vel * (1-exp(-s*t*t))
+                        else
                            jv = jet_vel
                         endif
                         if (abs(x-jet_x).lt.jet_width) then
@@ -6121,8 +3806,8 @@ contains
                   end do
                end do
             end do
-         endif 
-      end if        
+         endif
+      end if
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(w).gt.domhi(3)) then
          if (probtype.eq.17) then
@@ -6154,7 +3839,7 @@ contains
                end do
             end do
          endif
-      end if        
+      end if
 
 #ifdef BL_DO_FLCT
       if (forceInflow) deallocate(wflct)
@@ -6170,14 +3855,14 @@ contains
       REAL_T jetVel, xHole, yHole, rHole, rFact
       REAL_T hRad, hBL
       integer iHoleX, iHoleY
-      
+
       Lx = (domnhi(1) - domnlo(1))
       Ly = (domnhi(2) - domnlo(2))
       holeSepX = Lx / nHolesX
       holeSepY = Ly / nHolesY
       hRad = MIN(holeRad, 0.3*MIN(holeSepX,holeSepY))
       hBL = hRad/holeBLfac
-      
+
       totHoleA = nHolesX*nHolesY*Pi*hRad**2
       jetVel = adv_vel * Lx * Ly / totHoleA
 
@@ -6197,14 +3882,14 @@ contains
 !c *****
       REAL_T function plateVel(x,y,z,cord,flct)
       implicit none
-      
-      REAL_T   flct 
+
+      REAL_T   flct
       integer dir(SDIM), numholes(SDIM), idholes(SDIM)
       REAL_T  holespace(SDIM)
       REAL_T  dist(SDIM), loc(SDIM)
-!c     
+!c
 !c     ::::: local variables
-!c     
+!c
       integer cord, n
       REAL_T  twicePi
       REAL_T totHoleA
@@ -6237,7 +3922,7 @@ contains
          xcord(npts) = 0
          ycord(npts) = 0
       end do
-      
+
       if (adv_dir.eq.1) then
          dir(1) = 1
       else if (adv_dir.eq.2) then
@@ -6245,140 +3930,140 @@ contains
       else
          dir(3) = 1
       endif
-!c     perforated plate of square pattern         
+!c     perforated plate of square pattern
 #if 0
-    
+
       radius = 0.d0
       jetVel = 0.d0
-      
+
       twicePi = two*Pi
-      
-      numholes(1)= nHolesX 
-      numholes(2)= nHolesY 
-      numholes(3)= nHolesZ  
-      
+
+      numholes(1)= nHolesX
+      numholes(2)= nHolesY
+      numholes(3)= nHolesZ
+
       totHoleA = numholes(1)*numholes(2)*numholes(3)*Pi*holeRad**2
-     
-      
+
+
       sectarea = dir(1)*(domnhi(2) - domnlo(2))*(domnhi(3) - domnlo(3))+ &
           dir(2)*(domnhi(1) - domnlo(1)) * (domnhi(3) - domnlo(3))+ &
-          dir(3)*(domnhi(1) - domnlo(1)) * (domnhi(2) - domnlo(2)) 
-      
-      do n = 1, 3 
+          dir(3)*(domnhi(1) - domnlo(1)) * (domnhi(2) - domnlo(2))
+
+      do n = 1, 3
          holespace(n) = (domnhi(n) - domnlo(n)) / numholes(n)
       end do
-      
+
       jetVel = adv_vel*sectarea/totHoleA
-      
+
       loc(3) = z
       loc(2) = y
       loc(1) = x
-      
+
       do n = 1, 3
          idholes(n) = INT(loc(n)/holespace(n))
          dist(n) = loc(n) - (idholes(n) + half)*holespace(n)
       end do
-      
+
       radius = SQRT(dir(1)*(dist(2)**2 + dist(3)**2)+ &
           dir(2)*(dist(1)**2 + dist(3)**2) + &
           dir(3)*(dist(1)**2 + dist(2)**2))
-      
+
       if (radius .le. holeRad) then
-         plateVel = jetVel*dir(cord)+flct*turb_scale 
+         plateVel = jetVel*dir(cord)+flct*turb_scale
       else
          plateVel = 0.d0
       endif
 #endif
-!c     perforated plate of hexagnoal pattern     
+!c     perforated plate of hexagnoal pattern
 #if 0
-      
-      jetVel = adv_vel/(1.0 - holeBLfac)      
+
+      jetVel = adv_vel/(1.0 - holeBLfac)
       holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad
 
       vholeSp = sqrt(3.d0)*holeSp
-       
+
       plateVel = 0.d0
 
       icell = int (x/holeSp)
       jcell = int (y/vholeSp)
-      
+
       xcen = holeSp*(dfloat(icell) + half)
       ycen = vholeSp*(dfloat(jcell) + half)
 
       xloc = x-xcen
       yloc = y-ycen
-      
+
       xcord(1) = -half*holeSp
       ycord(1) = -half*vholeSp
-      
+
       xcord(2) = -half*holeSp
       ycord(2) = half*vholeSp
-      
+
       xcord(3) = half*holeSp
       ycord(3) = half*vholeSp
-      
+
       xcord(4) = half*holeSp
       ycord(4) = -half*vholeSp
-      
+
       xcord(5) = 0.d0
       ycord(5) = 0.d0
-      
+
       do npts = 1, 5
-         
+
          radius = SQRT((xloc-xcord(npts))**2 + (yloc-ycord(npts))**2)
-         
+
          if(radius .le. holeRad) then
-            plateVel = jetVel*dir(cord) + flct*turb_scale 
+            plateVel = jetVel*dir(cord) + flct*turb_scale
             plateVel = plateVel *(1.d0 - 2.d0*zblend1(radius,holeRad,holeRad/8.0))
          endif
       end do
-      
+
 
 #endif
 !c     perforated plate of hexagnoal pattern, no flow on boundaries (to enable periodic ok)
 #if 0
-      
-      jetVel = adv_vel/(1.0 - holeBLfac)      
+
+      jetVel = adv_vel/(1.0 - holeBLfac)
       holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad
 
       vholeSp = sqrt(3.d0)*holeSp
-       
+
       plateVel = 0.d0
 
       icell = int (x/holeSp)
       jcell = int (y/vholeSp)
-      
+
       xcen = holeSp*(dfloat(icell) + half)
       ycen = vholeSp*(dfloat(jcell) + half)
 
       xloc = x-xcen
       yloc = y-ycen
-      
+
       xcord(1) = -half*holeSp
       ycord(1) = -half*vholeSp
-      
+
       xcord(2) = -half*holeSp
       ycord(2) = half*vholeSp
-      
+
       xcord(3) = half*holeSp
       ycord(3) = half*vholeSp
-      
+
       xcord(4) = half*holeSp
       ycord(4) = -half*vholeSp
-      
+
       xcord(5) = 0.d0
       ycord(5) = 0.d0
-      
+
       do npts = 1, 5
-         
+
          radius = SQRT((xloc-xcord(npts))**2 + (yloc-ycord(npts))**2)
-         
+
          if(radius .le. holeRad) then
-            plateVel = jetVel*dir(cord) + flct*turb_scale 
+            plateVel = jetVel*dir(cord) + flct*turb_scale
 !c            plateVel = plateVel *(1.d0 - 2.d0*zblend1(radius,holeRad,holeRad/8.0))
          endif
       end do
-      
+
       if ((x.lt.domnlo(1) + .001) .or.  &
           (x.gt.domnhi(1) - .001) .or. &
           (y.lt.domnlo(2) + .001) .or.  &
@@ -6390,7 +4075,20 @@ contains
 
 !c     perforated plate with radial pattern, no flow on boundaries (to enable periodic ok)
 #if 1
-      jetVel = adv_vel/(1.0 - holeBLfac)      
+      jetVel = adv_vel/(1.0 - holeBLfac)
+
+! FIXME : from compiler
+!PROB_3D.F90:7106:0:
+!
+!          cent(n) = 0.5d0 * (domnlo(n) + domnhi(n))
+!
+!Warning: iteration 2 invokes undefined behavior [-Waggressive-loop-optimizations]
+!PROB_3D.F90:7105:0:
+!
+!       do n=1,3
+!
+!note: within this loop
+!
       do n=1,3
          cent(n) = 0.5d0 * (domnlo(n) + domnhi(n))
       enddo
@@ -6422,12 +4120,12 @@ contains
             if (j .le. NperMAX) then
                radius = sqrt( (x-centHole(i,j,1))**2 + (y-centHole(i,j,2))**2 )
                if(radius .le. holeRad) then
-                  plateVel = jetVel*dir(cord) + flct*turb_scale 
+                  plateVel = jetVel*dir(cord) + flct*turb_scale
                endif
             endif
          enddo
       enddo
-      
+
       if ((x.lt.domnlo(1) + .001) .or. &
           (x.gt.domnhi(1) - .001) .or. &
           (y.lt.domnlo(2) + .001) .or.  &
@@ -6438,8 +4136,8 @@ contains
 #endif
 !c  this is the original code
 #if 0
-      
-      jetVel = adv_vel/(1.0 - holeBLfac)      
+
+      jetVel = adv_vel/(1.0 - holeBLfac)
       holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad
 
       if(y.ge.0.d0)then
@@ -6454,61 +4152,61 @@ contains
       else
          icell = -1-int(-x/(holeSp))
       endif
-      
+
       xloc = x - holeSp * dfloat(icell) + yloc/sqrt(3.d0)
       xcen =.75d0*holeSp
       ycen =(sqrt(3.d0)*.25d0)*holeSp
       radius = SQRT((xloc-xcen)**2 + (yloc-ycen)**2)
       if(radius .le. holeRad) then
-         plateVel = jetVel*dir(cord) + flct*turb_scale 
+         plateVel = jetVel*dir(cord) + flct*turb_scale
 !c         plateVel = plateVel *(1.d0 - 2.d0*zblend1(radius,holeRad,holeRad/8.0))
 !c      else
 !c         plateVel = -jetVel*dir(cord)
 !c         plateVel = 0.d0
       endif
-      
+
 #endif
 !c     perforated plate of hexagnoal pattern with slot  (2 gaps in swirl region)
 #if 0
-      
-!c     jetVel = adv_vel/(1.0 - holeBLfac)     
-!c 
+
+!c     jetVel = adv_vel/(1.0 - holeBLfac)
+!c
       jetVel = 18.d0
       plateVel = 0.d0
-      
-      holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad      
+
+      holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad
       vholeSp = sqrt(3.d0)*holeSp
-      
+
       icell = int (x/holeSp)
       jcell = int (y/vholeSp)
-      
+
       xcen = holeSp*(dfloat(icell) + half)
       ycen = vholeSp*(dfloat(jcell) + half)
 
       xloc = x-xcen
       yloc = y-ycen
-      
+
       xcord(1) = -half*holeSp
       ycord(1) = -half*vholeSp
-      
+
       xcord(2) = -half*holeSp
       ycord(2) = half*vholeSp
-      
+
       xcord(3) = half*holeSp
       ycord(3) = half*vholeSp
-      
+
       xcord(4) = half*holeSp
       ycord(4) = -half*vholeSp
-      
+
       xcord(5) = 0.d0
       ycord(5) = 0.d0
 
       do npts = 1, 5
 
          radius = SQRT((xloc-xcord(npts))**2 + (yloc-ycord(npts))**2)
-         
+
          if(radius .le. holeRad) then
-            plateVel = jetVel*dir(cord) + flct*turb_scale 
+            plateVel = jetVel*dir(cord) + flct*turb_scale
 !c            plateVel = plateVel *(1.d0 - 2.d0*zblend1(radius,holeRad,holeRad/8.0))
          endif
       end do
@@ -6517,16 +4215,16 @@ contains
          if (cord .eq. 1) then
             plateVel = 32.d0*tan(37.d0/180.d0*Pi)
 
-            if (x .ge. 0.25*(domnhi(1)-domnlo(1)) .and. (x .le. (0.25*(domnhi(1)-domnlo(1)) + vane))) then 
+            if (x .ge. 0.25*(domnhi(1)-domnlo(1)) .and. (x .le. (0.25*(domnhi(1)-domnlo(1)) + vane))) then
                plateVel = 0.d0
             else  if (x .ge. 0.75*(domnhi(1)-domnlo(1)) .and. (x .le. (0.75*(domnhi(1)-domnlo(1)) + vane))) then
                plateVel = 0.d0
             end if
-            
+
          else if (cord .eq. 2) then
             plateVel = 0.d0
          else
-            if (x .ge. 0.25*(domnhi(1)-domnlo(1)) .and. (x .le. (0.25*(domnhi(1)-domnlo(1)) + vane))) then 
+            if (x .ge. 0.25*(domnhi(1)-domnlo(1)) .and. (x .le. (0.25*(domnhi(1)-domnlo(1)) + vane))) then
                plateVel = 0.d0
             else  if (x .ge. 0.75*(domnhi(1)-domnlo(1)) .and. (x .le. (0.75*(domnhi(1)-domnlo(1)) + vane))) then
                plateVel = 0.d0
@@ -6535,70 +4233,70 @@ contains
             endif
          endif
       endif
-      if ((y.ge.((domnhi(2)-domnlo(2)) - slotWidth - vane)) .and. & 
+      if ((y.ge.((domnhi(2)-domnlo(2)) - slotWidth - vane)) .and. &
           (y.lt.((domnhi(2)-domnlo(2)) - slotWidth))) then
          plateVel = 0.d0
       endif
-!c     in the region of 1 mm between the slot region and the plate 
-      
+!c     in the region of 1 mm between the slot region and the plate
+
 #endif
 
 
 !c     perforated plate of hexagnoal pattern with slot and shifting in x and y directions (4 gaps in swirl region)
 #if 0
-      
-!c     jetVel = adv_vel/(1.0 - holeBLfac)     
-!c 
-     
+
+!c     jetVel = adv_vel/(1.0 - holeBLfac)
+!c
+
       jetVel = adv_vel
       vslot = slot_vel
 
       plateVel = 0.d0
-      
-      
-      holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad      
+
+
+      holeSp = SQRT(two*Pi/(sqrt(3.d0)*(1.d0 - holeBLfac)))*holeRad
       vholeSp = sqrt(3.d0)*holeSp
-      
+
       xshift = alpha*holeSp
       yshift = beta*vholeSp
 
       icell = int ((x-xshift)/holeSp)
       jcell = int ((y-yshift)/vholeSp)
-      
+
       if ((x-xshift) .le. 0.d0) then
          icell = - 1 - int ((x-xshift)/holeSp)
       endif
       if ((y-yshift) .le. 0.d0) then
          jcell = - 1 - int ((y-yshift)/vholeSp)
       endif
-      
+
       xcen = holeSp*(dfloat(icell) + half) + xshift
       ycen = vholeSp*(dfloat(jcell) + half) + yshift
-      
+
       xloc = x-xcen
       yloc = y-ycen
-      
+
       xcord(1) = -half*holeSp
       ycord(1) = -half*vholeSp
-      
+
       xcord(2) = -half*holeSp
       ycord(2) = half*vholeSp
-      
+
       xcord(3) = half*holeSp
       ycord(3) = half*vholeSp
-      
+
       xcord(4) = half*holeSp
       ycord(4) = -half*vholeSp
-      
+
       xcord(5) = 0.d0
       ycord(5) = 0.d0
 
       do npts = 1, 5
-         
+
          radius = SQRT((xloc-xcord(npts))**2 + (yloc-ycord(npts))**2)
-         
+
          if(radius .le. holeRad) then
-            plateVel = jetVel*dir(cord) + flct*turb_scale 
+            plateVel = jetVel*dir(cord) + flct*turb_scale
 !c            plateVel = plateVel *(1.d0 - 2.d0*zblend1(radius,holeRad,holeRad/8.0))
          endif
       end do
@@ -6608,38 +4306,38 @@ contains
          if (cord .eq. 1) then
 !c            plateVel = 32.d0*tan(37.d0/180.d0*Pi)
             plateVel = vslot*tan(37.d0/180.d0*Pi)
-            
+
             do n = 1, 7, 2
-               if (x .ge. (dfloat(n)/8.d0*delta-half*vane) .and. (x .le. (dfloat(n)/8.d0*delta + half*vane))) then 
+               if (x .ge. (dfloat(n)/8.d0*delta-half*vane) .and. (x .le. (dfloat(n)/8.d0*delta + half*vane))) then
                   plateVel = 0.d0
                end if
             end do
-        
+
          else if (cord .eq. 2) then
             plateVel = 0.d0
          else
 !c            plateVel = 32.d0
             plateVel = vslot
             do n = 1, 7, 2
-               if (x .ge. (dfloat(n)/8.d0*delta-half*vane) .and. (x .le. (dfloat(n)/8.d0*delta + half*vane))) then 
+               if (x .ge. (dfloat(n)/8.d0*delta-half*vane) .and. (x .le. (dfloat(n)/8.d0*delta + half*vane))) then
                   plateVel = 0.d0
                end if
             end do
          endif
       endif
 !c     in the thin 1 mm wide no flow region
-      if ((y.ge.((domnhi(2)-domnlo(2)) - slotWidth - vane)) .and. & 
+      if ((y.ge.((domnhi(2)-domnlo(2)) - slotWidth - vane)) .and. &
           (y.lt.((domnhi(2)-domnlo(2)) - slotWidth))) then
          plateVel = 0.d0
       endif
 
-      
+
 #endif
 
 
 
       end function PlateVel
-      
+
 
 
 !c ::: -----------------------------------------------------------
@@ -6648,13 +4346,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: u        <=  full velocity array
 !c ::: DIMS(u)   => index extent of v array
 !c ::: domlo,hi  => index extent of problem domain
@@ -6728,7 +4426,7 @@ contains
 #endif
 
       call filcc (u(ARG_L1(u),ARG_L2(u),ARG_L3(u),1), &
-                 DIMS(u),domlo,domhi,dx,xlo,bc(1,1,1)) 
+                 DIMS(u),domlo,domhi,dx,xlo,bc(1,1,1))
       call filcc (u(ARG_L1(u),ARG_L2(u),ARG_L3(u),2),&
                  DIMS(u),domlo,domhi,dx,xlo,bc(1,1,2))
       call filcc (u(ARG_L1(u),ARG_L2(u),ARG_L3(u),3),&
@@ -6737,7 +4435,7 @@ contains
 !c     This forces radial inflow in a plane satisfying potential flow/incompressiblity
 
       call bl_pd_is_ioproc(isioproc)
-      
+
 !c      if (isioproc.eq.1) then
 !c         write (*,*) "In VELFILL..."
 !c      endif
@@ -6747,14 +4445,14 @@ contains
 !c     Here, we assume all the velocity components have the same bc type
 
          if (bc(1,1,1).eq.FOEXTRAP.and.ARG_L1(u).lt.domlo(1)) then
-!c     Lo x boundary            
+!c     Lo x boundary
 !c            write (*,*) "Doing 'outflow' boundary conditions for jet"
 
 !c     i on the interior
             ii = domlo(1)
 !c     x position of ii
             xi = domnlo(1) + (ii+0.5)*dx(1) - jet_x
-            
+
             jlo = ARG_L2(u); if (jlo.lt.domlo(2)) jlo=domlo(2);
             jhi = ARG_H2(u); if (jhi.gt.domlo(2)) jhi=domlo(2);
 
@@ -6776,7 +4474,7 @@ contains
 !c     interpolate velocities to xp
                      uxp = u(ii,j,k,1) + ax*(u(ii,jp,k,1)-u(ii,j,k,1))
                      uyp = u(ii,j,k,2) + ax*(u(ii,jp,k,2)-u(ii,j,k,2))
-!c     radial velocity at yp 
+!c     radial velocity at yp
 !c                     up = (uxp*xi-uyp*yp)/rp
                      up = (uxp*xi-uyp*yp)
 !c     radial velocity at bc
@@ -6789,7 +4487,7 @@ contains
                end do
             end do
          endif
-         
+
          if (bc(1,2,1).eq.FOEXTRAP.and.ARG_H1(u).gt.domhi(1)) then
 !c     Hi x boundary
 !c            write (*,*) "Doing 'outflow' boundary conditions for jet"
@@ -6833,7 +4531,7 @@ contains
                end do
             end do
          endif
-      
+
          if (bc(2,1,1).eq.FOEXTRAP.and.ARG_L2(u).lt.domlo(2)) then
 !c     Lo y boundary
 !c            write (*,*) "Doing 'outflow' boundary conditions for jet"
@@ -6877,7 +4575,7 @@ contains
                end do
             end do
          endif
-         
+
          if (bc(2,2,1).eq.FOEXTRAP.and.ARG_H2(u).gt.domhi(2)) then
 !c     Hi y boundary
 !c            write (*,*) "Doing 'outflow' boundary conditions for jet"
@@ -6921,7 +4619,7 @@ contains
                end do
             end do
          endif
-         
+
          if (bc(3,1,1).eq.EXT_DIR.and.ARG_L3(u).lt.domlo(3)) then
 !c     Lo z boundary
             do k = ARG_L3(u), domlo(3)-1
@@ -6945,7 +4643,7 @@ contains
                enddo
             enddo
          endif
-         
+
          if (bc(3,2,1).eq.EXT_DIR.and.ARG_H3(u).gt.domhi(3)) then
 !c     Hi z boundary
             do k = domhi(3)+1, ARG_H3(u)
@@ -6962,7 +4660,7 @@ contains
 !c     Not probtype 18 - do general fill
          call bl_error('General VELFILL not implemented yet')
       endif
-      
+
 #if defined(BL_DO_FLCT)
       if (forceInflow) then
          deallocate(uflct)
@@ -6971,20 +4669,20 @@ contains
       endif
 #endif
       end subroutine FORT_VELFILL
-      
+
 !c ::: -----------------------------------------------------------
 !c ::: This routine is called during a filpatch operation when
 !c ::: the patch to be filled falls outside the interior
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: divu     <=  divergence of velocity array
 !c ::: DIMS(divu)=> index extent of divu array
 !c ::: domlo,hi  => index extent of problem domain
@@ -7013,7 +4711,7 @@ contains
 
       if (adv_dir .eq. 3) then
          z_vel = adv_vel
-      else  
+      else
          z_vel = zero
       end if
 
@@ -7027,7 +4725,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(divu).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(divu)
@@ -7037,7 +4735,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(divu).lt.domlo(2)) then
          do j = ARG_L2(divu), domlo(2)-1
@@ -7047,7 +4745,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(divu).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(divu)
@@ -7057,7 +4755,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(divu).lt.domlo(3)) then
          do k = ARG_L3(divu), domlo(3)-1
@@ -7067,7 +4765,7 @@ contains
                end do
             end do
          end do
-      end if        
+      end if
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(divu).gt.domhi(3)) then
          do k = domhi(3)+1, ARG_H3(divu)
@@ -7077,7 +4775,7 @@ contains
                end do
             end do
          end do
-      end if        
+      end if
 
       end subroutine FORT_DIVUFILL
 
@@ -7087,13 +4785,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: dsdt     <=  dsdt array
 !c ::: DIMS(dsdt)=> index extent of dsdt array
 !c ::: domlo,hi  => index extent of problem domain
@@ -7127,7 +4825,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(1,2).eq.EXT_DIR.and.ARG_H1(dsdt).gt.domhi(1)) then
          do i = domhi(1)+1, ARG_H1(dsdt)
@@ -7137,7 +4835,7 @@ contains
                end do
 	    end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,1).eq.EXT_DIR.and.ARG_L2(dsdt).lt.domlo(2)) then
          do j = ARG_L2(dsdt), domlo(2)-1
@@ -7147,7 +4845,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(2,2).eq.EXT_DIR.and.ARG_H2(dsdt).gt.domhi(2)) then
          do j = domhi(2)+1, ARG_H2(dsdt)
@@ -7157,7 +4855,7 @@ contains
                end do
             end do
 	 end do
-      end if            
+      end if
 
       if (bc(3,1).eq.EXT_DIR.and.ARG_L3(dsdt).lt.domlo(3)) then
          do k = ARG_L3(dsdt), domlo(3)-1
@@ -7167,7 +4865,7 @@ contains
                end do
             end do
          end do
-      end if        
+      end if
 
       if (bc(3,2).eq.EXT_DIR.and.ARG_H3(dsdt).gt.domhi(3)) then
          do k = domhi(3)+1, ARG_H3(dsdt)
@@ -7177,7 +4875,7 @@ contains
                end do
             end do
          end do
-      end if        
+      end if
 
       end subroutine FORT_DSDTFILL
 
@@ -7187,13 +4885,13 @@ contains
 !c ::: of the problem domain.  You are requested to supply the
 !c ::: data outside the problem interior in such a way that the
 !c ::: data is consistant with the types of the boundary conditions
-!c ::: you specified in the C++ code.  
-!c ::: 
+!c ::: you specified in the C++ code.
+!c :::
 !c ::: NOTE:  you can assume all interior cells have been filled
 !c :::        with valid data.
-!c ::: 
+!c :::
 !c ::: INPUTS/OUTPUTS:
-!c ::: 
+!c :::
 !c ::: p        <=  pressure array
 !c ::: lo,hi     => index extent of p array
 !c ::: domlo,hi  => index extent of problem domain
@@ -7245,7 +4943,7 @@ contains
       khi = min(ARG_H3(p),domhi(3))
 
 !c*****************************************************************************
-!c SETTING XLO 
+!c SETTING XLO
 !c*****************************************************************************
 
       if (fix_xlo) then
@@ -7253,7 +4951,7 @@ contains
             do k = klo, khi
                do j = jlo,jhi
                   p(i,j,k) = p(ilo,j,k)
-               end do 
+               end do
             end do
 	 end do
 
@@ -7402,7 +5100,7 @@ contains
                end do
             end if
 	 end if
- 
+
          if (per_ylo) then
                do i = ARG_L1(p), domlo(1)-1
                   do k = klo,khi
@@ -7421,7 +5119,7 @@ contains
                   end do
                end do
          end if
- 
+
          if (per_zlo) then
                do i = ARG_L1(p), domlo(1)-1
                   do j = jlo,jhi
@@ -7481,7 +5179,7 @@ contains
                end do
 	 end if
 
-      end if            
+      end if
 
 !c*****************************************************************************
 !c SETTING XHI
@@ -7720,7 +5418,7 @@ contains
                end do
          end if
 
-      end if            
+      end if
 
 !c*****************************************************************************
 !c SETTING YLO
@@ -7870,8 +5568,8 @@ contains
                end do
          end if
 
-      end if            
- 
+      end if
+
 !c*****************************************************************************
 !c SETTING YHI
 !c*****************************************************************************
@@ -8019,7 +5717,7 @@ contains
                end do
          end if
 
-      end if            
+      end if
 
 !c*****************************************************************************
 !c SETTING ZLO
@@ -8112,7 +5810,7 @@ contains
                end do
          end if
 
-      end if            
+      end if
 
 !c*****************************************************************************
 !c SETTING ZHI
@@ -8206,7 +5904,7 @@ contains
                end do
          end if
 
-      end if            
+      end if
 
 !c*****************************************************************************
 
