@@ -212,6 +212,8 @@ public:
 
     void time_average(amrex::Real& time_avg, amrex::Real& time_avg_fluct, amrex::Real& dt_avg, const amrex::Real& dt_level);
 
+    void test_libtorch();
+
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //
     ////////////////////////////////////////////////////////////////////////////

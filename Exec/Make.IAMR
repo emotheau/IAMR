@@ -53,6 +53,19 @@ CEXE_sources += AMReX_buildInfo.cpp
 CEXE_headers += $(AMREX_HOME)/Tools/C_scripts/AMReX_buildInfo.H
 INCLUDE_LOCATIONS +=  $(AMREX_HOME)/Tools/C_scripts
 
+
+# Linking LibTorch
+LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch
+INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include
+INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include/torch/csrc/api/include
+
+LIBRARY_LOCATIONS += $(LIBTORCH_DIR)/lib
+LDFLAGS += -Xlinker -rpath -Xlinker $(LIBTORCH_DIR)/lib
+
+LIBRARIES += -ltorch -ltorch_cpu -lc10 -lgomp
+CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
+
+
 all: $(executable)
 	$(SILENT) $(RM) AMReX_buildInfo.cpp
 	@echo SUCCESS
