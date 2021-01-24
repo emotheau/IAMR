@@ -55,16 +55,16 @@ INCLUDE_LOCATIONS +=  $(AMREX_HOME)/Tools/C_scripts
 
 
 # Linking LibTorch
-LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch
-INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include
-INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include/torch/csrc/api/include
+ifeq ($(USE_LIBTORCH),TRUE)
+  INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include
+  INCLUDE_LOCATIONS += $(LIBTORCH_DIR)/include/torch/csrc/api/include
 
-LIBRARY_LOCATIONS += $(LIBTORCH_DIR)/lib
-LDFLAGS += -Xlinker -rpath -Xlinker $(LIBTORCH_DIR)/lib
+  LIBRARY_LOCATIONS += $(LIBTORCH_DIR)/lib
+  LDFLAGS += -Xlinker -rpath -Xlinker $(LIBTORCH_DIR)/lib
 
-LIBRARIES += -ltorch -ltorch_cpu -lc10 -lgomp
-CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
-
+  LIBRARIES += -ltorch -ltorch_cpu -lc10 -lgomp
+  CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
+endif
 
 all: $(executable)
 	$(SILENT) $(RM) AMReX_buildInfo.cpp

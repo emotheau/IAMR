@@ -20,6 +20,9 @@ PROFILE     = FALSE
 
 USE_CUDA = FALSE
 
+USE_LIBTORCH = TRUE
+LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch
+
 USE_SENSEI_INSITU = FALSE
 
 EBASE = amr

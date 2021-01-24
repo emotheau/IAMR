@@ -10,7 +10,7 @@ ns.temp_cond_coef=1.e-8
 
 # Maximum number of coarse grid timesteps to be taken, if stop_time is
 #  not reached first.
-max_step 		= 30
+max_step 		= 1
 
 # Time at which calculation stops, if max_step is not reached first.
 stop_time 		= 1.0
@@ -24,13 +24,14 @@ ns.do_temp_ref = 1
 #*******************************************************************************
 
 # Number of cells in each coordinate direction at the coarsest level
-amr.n_cell 		= 32 32
+amr.n_cell 		= 128 128
+amr.n_cell              = 8 8
 amr.max_grid_size	= 32
 
 #*******************************************************************************
 
 # Maximum level (defaults to 0 for single level calculation)
-amr.max_level		= 1 # maximum number of levels of refinement
+amr.max_level		= 0 # maximum number of levels of refinement
 
 #*******************************************************************************
 
@@ -130,4 +131,3 @@ amr.plot_vars = x_velocity y_velocity density tracer temp
 #*******************************************************************************
 
 ns.avg_interval = 1
-
