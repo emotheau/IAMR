@@ -52,8 +52,8 @@ amrex::Print() << "\n DEBUG box_bounds.x = " << bx_onegrid_bounds.x << std::endl
 
 
 
-  torch::Tensor t1 = torch::zeros({bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
-  std::cout << "Tensor from array:\n" << t1 << '\n';
+  torch::Tensor t1 = torch::zeros({1,4,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
+//  std::cout << "Tensor from array:\n" << t1 << '\n';
 
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -67,7 +67,10 @@ amrex::Print() << "\n DEBUG box_bounds.x = " << bx_onegrid_bounds.x << std::endl
     AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
 
-      t1[j][i] = Snew_vel(i,j,k);  // Inverting i and j index because of the PyTorch formalism
+      t1[0][0][j][i] = Snew_vel(i,j,k);  // Inverting i and j index because of the PyTorch formalism
+      t1[0][1][j][i] = Snew_vel(i,j,k);
+      t1[0][2][j][i] = Snew_vel(i,j,k);
+      t1[0][3][j][i] = Snew_vel(i,j,k); 
 //      amrex::Print() << "i= " << i << " j= " << j << "   array= "  << Snew_vel(i,j,k) << std::endl;
 //      amrex::Print() << "i= " << i << " j= " << j << "   array Torch= "  << t1[i][j] << std::endl;
     });
@@ -75,6 +78,8 @@ amrex::Print() << "\n DEBUG box_bounds.x = " << bx_onegrid_bounds.x << std::endl
   }
 
 std::cout << "Tensor from array:\n" << t1 << '\n';
+
+
 
 torch::jit::script::Module module;
   try {
@@ -86,10 +91,10 @@ torch::jit::script::Module module;
   }
 
 
-//    std::vector<torch::jit::IValue> inputs{t1};
+    std::vector<torch::jit::IValue> inputs{t1};
 
-std::vector<torch::jit::IValue> inputs;
-    inputs.push_back(torch::rand({1, 4, 512, 512}));
+//   std::vector<torch::jit::IValue> inputs;
+//    inputs.push_back(torch::rand({1, 4, 512, 512}));
 
 
  at::Tensor output = module.forward(inputs).toTensor();
