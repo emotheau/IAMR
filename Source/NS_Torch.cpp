@@ -3,6 +3,8 @@
 #include <AMReX_VisMF.H>
 
 #include <torch/torch.h>
+#include <torch/script.h> // One-stop header.
+
 
 using namespace amrex;
 
@@ -66,14 +68,31 @@ amrex::Print() << "\n DEBUG box_bounds.x = " << bx_onegrid_bounds.x << std::endl
     {
 
       t1[j][i] = Snew_vel(i,j,k);  // Inverting i and j index because of the PyTorch formalism
-      amrex::Print() << "i= " << i << " j= " << j << "   array= "  << Snew_vel(i,j,k) << std::endl;
-      amrex::Print() << "i= " << i << " j= " << j << "   array Torch= "  << t1[i][j] << std::endl;
+//      amrex::Print() << "i= " << i << " j= " << j << "   array= "  << Snew_vel(i,j,k) << std::endl;
+//      amrex::Print() << "i= " << i << " j= " << j << "   array Torch= "  << t1[i][j] << std::endl;
     });
 
   }
 
 std::cout << "Tensor from array:\n" << t1 << '\n';
 
+torch::jit::script::Module module;
+  try {
+    // Deserialize the ScriptModule from a file using torch::jit::load().
+    module = torch::jit::load("traced_unet_model.pt");
+  }
+  catch (const c10::Error& e) {
+    amrex::Abort( "error loading the model\n");
+  }
+
+
+//    std::vector<torch::jit::IValue> inputs{t1};
+
+std::vector<torch::jit::IValue> inputs;
+    inputs.push_back(torch::rand({1, 4, 512, 512}));
+
+
+ at::Tensor output = module.forward(inputs).toTensor();
 
 
 }

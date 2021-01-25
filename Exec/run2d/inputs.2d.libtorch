@@ -26,6 +26,7 @@ ns.do_temp_ref = 1
 # Number of cells in each coordinate direction at the coarsest level
 amr.n_cell 		= 128 128
 amr.n_cell              = 8 8
+amr.n_cell              = 512 512
 amr.max_grid_size	= 32
 
 #*******************************************************************************
