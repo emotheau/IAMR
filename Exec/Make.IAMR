@@ -10,6 +10,11 @@ Bdirs += Source/Src_$(DIM)d
 Bdirs += Source/MOL
 Bdirs += Source/Godunov
 
+ifeq ($(USE_LIBTORCH),TRUE)
+  Bdirs += Source/DL_Models
+  Bdirs += Source/Torch
+endif
+
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
 
