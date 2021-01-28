@@ -50,7 +50,7 @@ const auto bx_onegrid_bounds = amrex::ubound(bx_onegrid);
 amrex::Print() << "\n DEBUG box_bounds.x = " << bx_onegrid_bounds.x << std::endl;
 
 // We want to launch Torch on just 1 mpi process
-if (ParallelDescriptor::IOProcessor()){
+//if (ParallelDescriptor::IOProcessor()){
 
 
   torch::Tensor t1 = torch::zeros({1,4,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
@@ -78,7 +78,7 @@ if (ParallelDescriptor::IOProcessor()){
 
   }
 
-std::cout << "Tensor from array:\n" << t1 << '\n';
+//std::cout << "Tensor from array:\n" << t1 << '\n';
 
 
 
@@ -99,11 +99,12 @@ torch::jit::script::Module module;
 
 
  at::Tensor output = module.forward(inputs).toTensor();
-}
+
+//} // End of ParallelDescriptor
 
 amrex::Print() << "DEBUG WE ARE AFTER TORCH \n ";
 
-ParallelDescriptor::Barrier();
+//ParallelDescriptor::Barrier();
 
 }
 
