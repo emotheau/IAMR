@@ -26,6 +26,11 @@
 #include <AMReX_EBFluxRegister.H>
 #endif
 
+
+#include <torch/torch.h>
+#include "cunet.h"
+
+
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
@@ -824,6 +829,13 @@ public:
   //
   static bool particles_in_plotfile;
 #endif
+
+
+static CUNet2d model;
+static torch::optim::Adam optim;
+
+
+
 };
 
 #endif

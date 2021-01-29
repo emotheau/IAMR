@@ -25,6 +25,13 @@
 //fixme, for writesingle level plotfile
 #include<AMReX_PlotFileUtil.H>
 
+
+
+#include <torch/torch.h>
+#include "cunet.h"
+
+
+
 using namespace amrex;
 
 struct DummyFill           // Set 0.0 on EXT_DIR, nothing otherwise.
@@ -160,6 +167,12 @@ int NavierStokesBase::gradp_in_checkpoint = -1;
 
 // is Average in checkpoint file 
 int NavierStokesBase::average_in_checkpoint = -1;
+
+
+int inChannels=1, outChannels=1;
+   CUNet2d NavierStokesBase::model(inChannels,outChannels);
+   torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
+
 
 namespace
 {

@@ -77,8 +77,8 @@ NavierStokesBase::training_Unet_2d()
   int inChannels=1, outChannels=1;
   int height=bx_onegrid_bounds.x+1, width=bx_onegrid_bounds.y+1;
     
-   CUNet2d model(inChannels,outChannels);
-   torch::optim::Adam optim(model->parameters(), torch::optim::AdamOptions(1e-3));
+//   CUNet2d model(inChannels,outChannels);
+//   torch::optim::Adam optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 
     
 //    torch::Tensor source=torch::randn({batchSize,inChannels,height,width});
@@ -90,12 +90,15 @@ NavierStokesBase::training_Unet_2d()
 
     for (int epoch = 0; epoch < 1; epoch++)
     {
-        optim.zero_grad();
+//        optim.zero_grad();
         result = model(t1);
 //        loss = torch::mse_loss(result, target);
 //        loss.backward();
 //        optim.step();
     }
+
+// auto output = model->forward(t1);
+// std::cout << "Tensor output array:\n" << output << '\n';
 
 std::cout << "Tensor result array:\n" << result << '\n';
 
