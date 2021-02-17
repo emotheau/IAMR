@@ -1,4 +1,4 @@
-CEXE_sources += NS_Torch_training_Unet.cpp
+#CEXE_sources += NS_Torch_training_Unet.cpp
 CEXE_sources += NS_Torch_testing.cpp
 
 #

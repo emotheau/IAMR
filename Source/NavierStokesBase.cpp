@@ -2676,10 +2676,13 @@ NavierStokesBase::post_timestep (int crse_iteration)
       time_average(time_avg[level], time_avg_fluct[level], dt_avg[level], dt_level);
     }
 
-// This is a test to try LibTorch
-//test_libtorch();
 
-training_Unet_2d();
+
+// This is a test to try LibTorch
+test_libtorch();
+
+//    training_Unet_2d();
+
 
 
 }
