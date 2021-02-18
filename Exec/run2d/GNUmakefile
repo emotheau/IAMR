@@ -14,14 +14,14 @@ DIM         = 2
 COMP        = gnu
 
 DEBUG       = FALSE
-USE_MPI     = TRUE
+USE_MPI     = FALSE
 USE_OMP     = FALSE
 PROFILE     = FALSE
 
 USE_CUDA = FALSE
 
 USE_LIBTORCH = TRUE
-LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch
+LIBTORCH_DIR = /Users/jpathak/torchscript/libtorch
 
 USE_SENSEI_INSITU = FALSE
 
