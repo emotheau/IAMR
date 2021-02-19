@@ -21,6 +21,16 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
   // Getting new state data
   MultiFab& Snew   = get_new_data(State_Type);
+//  Snew.FillBoundary( geom.periodicity());
+  const Real cur_time = state[State_Type].curTime();
+  FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
+
+/*
+    for (MFIter mfi(Snew,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << Snew[mfi];
+  }
+*/
 
   // get boxArray
   BoxArray ba = Snew.boxArray();
@@ -38,12 +48,19 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   // BoxArray, DistributionMapping, and MultiFab with one grid
   BoxArray ba_onegrid(bx_onegrid);
   DistributionMapping dmap_onegrid(ba_onegrid);
-  MultiFab Snew_onegrid(ba_onegrid,dmap_onegrid,ncomp,Snew.nGrow());
+  MultiFab Snew_onegrid(ba_onegrid,dmap_onegrid,ncomp,1);
 
   // copy data into MultiFab with one grid
   // FIX ME : SET THAT WE START FROM X_VEL
-  Snew_onegrid.ParallelCopy(Snew,0,0,ncomp,0,Snew.nGrow());
+  Snew_onegrid.ParallelCopy(Snew,0,0,ncomp,1,1);
+//    FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
 
+  /*
+    for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << Snew_onegrid[mfi];
+  }
+  */
 
   // For debugging
   VisMF::Write(Snew,"Snew_coarse_b4_ML");
@@ -62,13 +79,22 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   DistributionMapping dmapRefined(baRefined);
 
   // Note that Snew_onegrid should have 0 ghost-cells because the target Torch Tensor will have 0
-  MultiFab SnewRefined(baRefined, dmapRefined, ncomp, Snew_onegrid.nGrow());
+  MultiFab SnewRefined(baRefined, dmapRefined, ncomp, 0);
 
   // get geometry object from global scope and create a refined copy
   Box bx_fine_geom = geom.Domain();
   bx_fine_geom.refine(ratio);
 
   Geometry fine_geom(bx_fine_geom, geom.ProbDomain(), geom.Coord(), geom.isPeriodic());
+
+
+amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
+
+  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << Snew_onegrid[mfi];
+  }
+
 
 // Interpolating Snew_onegrid on SnewRefined
 
@@ -84,6 +110,10 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
     FArrayBox& ffab = (SnewRefined)[mfi];
     const FArrayBox& cfab = (Snew_onegrid)[mfi];
     const Box&  bx   = mfi.tilebox();
+
+    amrex::Print() << "\n DEBUG bx = " << bx << std::endl;
+
+
     Vector<BCRec> bx_bcrec(ncomp);
 
     interpolater->interp(cfab,0,ffab,0,ncomp,bx,rr,
@@ -93,6 +123,12 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   // For debugging
   VisMF::Write(SnewRefined,"SnewRefined_b4_ML");
 
+  /*
+    for (MFIter mfi(SnewRefined,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << SnewRefined[mfi];
+  }
+*/
 
 // Now we convert the one grid MultiFab to a Torch tensor
 
@@ -132,14 +168,21 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
         }
       }
     }
-    amrex::Print() << "\n DEBUG SnewRefined " << SnewRefined[mfi] << "\n";
+//    amrex::Print() << "\n DEBUG SnewRefined " << SnewRefined[mfi] << "\n";
 
     }
   }
 
-  amrex::Print() << "Tensor t1 from array :\n" << t1 << '\n';
+//  amrex::Print() << "Tensor t1 from array :\n" << t1 << '\n';
 
-  
+  /*
+    for (MFIter mfi(SnewRefined,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << SnewRefined[mfi];
+  }
+*/
+
+
 // Loading the model with TorchScript
   
   torch::jit::script::Module module;
@@ -193,15 +236,14 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
     }
 
-    // Here we put back the temporary fab to SnewRefined_fab  
+// Here we put back the temporary fab to SnewRefined_fab  
     amrex::ParallelFor(bx, ncomp, [fab,CorrectedState_fab]
     AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-    amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << std::endl; 
+//    amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << std::endl; 
       CorrectedState_fab(i,j,k,n) = fab(i,j,k,n);
-       amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << " " << CorrectedState_fab(i,j,k,n) << std::endl;
+//       amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << " " << CorrectedState_fab(i,j,k,n) << std::endl;
     });
-    amrex::Print() << "\N ARRRRGGGLLL \N";
     amrex::Print() << "\n DEBUG CorrectedState " << CorrectedState[mfi] << "\n";
 
   }
@@ -209,12 +251,16 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
   Snew_onegrid.setVal(0.);
 
+/*
   amrex::Print() << "\n DEBUG WE ENSURE THAT Snew_onegrid is set to 0 \n";
+
   for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
   {
     amrex::Print() << Snew_onegrid[mfi];
   }
+*/
 
+// We average down CorrectedState to the original Snew_onegrid. Warning, we still have an unused ghost-cell here
   amrex::average_down (CorrectedState, Snew_onegrid, 0,  ncomp, ratio);
 
   amrex::Print() << "\n DEBUG Snew_onegrid after ML and after average_down \n";
@@ -223,6 +269,8 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
     amrex::Print() << Snew_onegrid[mfi];
   }
   
+
+// Last step is to put back Snew_onegrid in the general State_type data
 
 
 
