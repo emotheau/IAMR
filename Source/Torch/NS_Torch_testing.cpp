@@ -188,7 +188,10 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
   torch::jit::script::Module module;
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
-    module = torch::jit::load("traced_dummy_module_16.pt");
+//    module = torch::jit::load("traced_dummy_module_16.pt");
+
+    module = torch::jit::load("traced_unet_model.pt");
+
   }
   catch (const c10::Error& e) {
     amrex::Abort( "error loading the model\n");
@@ -284,6 +287,10 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
 
   Snew.ParallelCopy(Snew_onegrid,0,0,ncomp,0,0);
   FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
+
+  // For debugging
+  VisMF::Write(Snew,"Snew_coarse_AFTER_ML");
+  VisMF::Write(Snew_onegrid,"Snew_onegrid_AFTER_ML");
 
 /*
   amrex::Print() << "\n DEBUG FINAL SNEW AFTER COPY \n";
