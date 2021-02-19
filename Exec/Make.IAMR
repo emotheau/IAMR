@@ -68,7 +68,7 @@ ifeq ($(USE_LIBTORCH),TRUE)
   LDFLAGS += -Xlinker -rpath -Xlinker $(LIBTORCH_DIR)/lib
 
   LIBRARIES += -ltorch -ltorch_cpu -lc10 -lgomp
-  CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
+  CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=1
 endif
 
 all: $(executable)

@@ -13,15 +13,15 @@ PRECISION   = DOUBLE
 DIM         = 2
 COMP        = gnu
 
-DEBUG       = FALSE
-USE_MPI     = FALSE
+DEBUG       = TRUE
+USE_MPI     = TRUE
 USE_OMP     = FALSE
 PROFILE     = FALSE
 
 USE_CUDA = FALSE
 
 USE_LIBTORCH = TRUE
-LIBTORCH_DIR = /Users/jpathak/torchscript/libtorch
+LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch_cpu
 
 USE_SENSEI_INSITU = FALSE
 
