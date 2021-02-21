@@ -13,7 +13,7 @@ PRECISION   = DOUBLE
 DIM         = 2
 COMP        = gnu
 
-DEBUG       = FALSE
+DEBUG       = TRUE
 USE_MPI     = TRUE
 USE_OMP     = FALSE
 PROFILE     = FALSE
@@ -21,7 +21,7 @@ PROFILE     = FALSE
 USE_CUDA = FALSE
 
 USE_LIBTORCH = TRUE
-LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch
+LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch_cpu
 
 USE_SENSEI_INSITU = FALSE
 
