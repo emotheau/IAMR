@@ -188,7 +188,10 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
   torch::jit::script::Module module;
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
-    module = torch::jit::load("traced_dummy_module_16.pt");
+//    module = torch::jit::load("traced_dummy_module_16.pt");
+
+    module = torch::jit::load("traced_unet_model.pt");
+
   }
   catch (const c10::Error& e) {
     amrex::Abort( "error loading the model\n");
@@ -263,14 +266,40 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
 // We average down CorrectedState to the original Snew_onegrid. Warning, we still have an unused ghost-cell here
   amrex::average_down (CorrectedState, Snew_onegrid, 0,  ncomp, ratio);
 
+ /*
   amrex::Print() << "\n DEBUG Snew_onegrid after ML and after average_down \n";
   for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
   {
     amrex::Print() << Snew_onegrid[mfi];
   }
-  
+  */
+
+/*
+  amrex::Print() << "\n DEBUG FINAL SNEW BEFORE COPY \n";
+
+  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << Snew[mfi];
+  }
+*/
 
 // Last step is to put back Snew_onegrid in the general State_type data
+
+  Snew.ParallelCopy(Snew_onegrid,0,0,ncomp,0,0);
+  FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
+
+  // For debugging
+  VisMF::Write(Snew,"Snew_coarse_AFTER_ML");
+  VisMF::Write(Snew_onegrid,"Snew_onegrid_AFTER_ML");
+
+/*
+  amrex::Print() << "\n DEBUG FINAL SNEW AFTER COPY \n";
+
+  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+  {
+    amrex::Print() << Snew[mfi];
+  }
+*/
 
 
 
