@@ -21,7 +21,7 @@ PROFILE     = FALSE
 USE_CUDA = FALSE
 
 USE_LIBTORCH = TRUE
-LIBTORCH_DIR = /home/emotheau/GitCodes/libtorch_cpu
+LIBTORCH_DIR = /project/projectdirs/dasrepo/jpathak/torchscript_test/libtorch 
 
 USE_SENSEI_INSITU = FALSE
 
