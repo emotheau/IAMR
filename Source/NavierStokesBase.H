@@ -214,6 +214,9 @@ public:
 
     void test_libtorch();
     void training_Unet_2d();
+    static double sim_start_time;
+    static float last_ml_correction_time;
+    static int ml_correction_iter;
 
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //

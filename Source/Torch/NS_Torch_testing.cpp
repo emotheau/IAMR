@@ -39,7 +39,7 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   Box bx_onegrid = ba.minimalBox().enclosedCells();
 
   // number of cells in the coarse domain
-  Print() << "npts in coarse domain = " << bx_onegrid.numPts() << std::endl;
+//  Print() << "npts in coarse domain = " << bx_onegrid.numPts() << std::endl;
 
   // Here we set that we have only 2 components
   // FIX ME : WE HAVE TO DO SOMETHING MORE GENERIC LATER
@@ -88,12 +88,12 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   Geometry fine_geom(bx_fine_geom, geom.ProbDomain(), geom.Coord(), geom.isPeriodic());
 
 
-amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
+//amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
 
-  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew_onegrid[mfi];
-  }
+//  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+//  {
+//    amrex::Print() << Snew_onegrid[mfi];
+//  }
 
 
 // Interpolating Snew_onegrid on SnewRefined
@@ -111,7 +111,7 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
     const FArrayBox& cfab = (Snew_onegrid)[mfi];
     const Box&  bx   = mfi.tilebox();
 
-    amrex::Print() << "\n DEBUG bx = " << bx << std::endl;
+//    amrex::Print() << "\n DEBUG bx = " << bx << std::endl;
 
 
     Vector<BCRec> bx_bcrec(ncomp);
@@ -132,8 +132,8 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
 
 // Now we convert the one grid MultiFab to a Torch tensor
 
-  amrex::Print() << "\n DEBUG amrex::ubound(bx_fine_geom) = " << amrex::ubound(bx_fine_geom) << std::endl;
-  amrex::Print() << "\n DEBUG amrex::lbound(bx_fine_geom) = " << amrex::lbound(bx_fine_geom) << std::endl;
+//  amrex::Print() << "\n DEBUG amrex::ubound(bx_fine_geom) = " << amrex::ubound(bx_fine_geom) << std::endl;
+//  amrex::Print() << "\n DEBUG amrex::lbound(bx_fine_geom) = " << amrex::lbound(bx_fine_geom) << std::endl;
 
   const auto bx_onegrid_bounds = amrex::ubound(bx_fine_geom);
 
@@ -203,7 +203,7 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
   at::Tensor output = module.forward(inputs).toTensor();
   output += t1;
 
-  amrex::Print() << "\n DEBUG TENSOR AFTER ML " << output << std::endl;
+//  amrex::Print() << "\n DEBUG TENSOR AFTER ML " << output << std::endl;
 
 
 // Putting back the Torch Tensor to the SnewRefined multifab
@@ -235,7 +235,7 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
         }
       }
 
-      amrex::Print() << "\n DEBUG fab_tmp_after_ML" << fab_tmp << "\n";
+//      amrex::Print() << "\n DEBUG fab_tmp_after_ML" << fab_tmp << "\n";
 
     }
 
@@ -247,7 +247,7 @@ amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
       CorrectedState_fab(i,j,k,n) = fab(i,j,k,n);
 //       amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << " " << CorrectedState_fab(i,j,k,n) << std::endl;
     });
-    amrex::Print() << "\n DEBUG CorrectedState " << CorrectedState[mfi] << "\n";
+//    amrex::Print() << "\n DEBUG CorrectedState " << CorrectedState[mfi] << "\n";
 
   }
 

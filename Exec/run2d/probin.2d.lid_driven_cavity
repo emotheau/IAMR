@@ -2,6 +2,6 @@
 &fortin
 
   probtype = 10
-  lid_vel = 1.0
+  lid_vel = 10.0
 
 /

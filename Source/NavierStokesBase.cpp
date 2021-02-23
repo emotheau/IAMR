@@ -76,6 +76,8 @@ int  NavierStokesBase::verbose     = 0;
 Real NavierStokesBase::gravity     = 0.0;
 int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
+double NavierStokesBase::sim_start_time = 0;
+int NavierStokesBase::ml_correction_iter = 1;
 
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
@@ -2511,6 +2513,8 @@ NavierStokesBase::post_restart ()
 {
     make_rho_prev_time();
     make_rho_curr_time();
+    NavierStokesBase::sim_start_time = state[State_Type].curTime();
+//    amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
 
   if (avg_interval > 0){
 
@@ -2677,10 +2681,19 @@ NavierStokesBase::post_timestep (int crse_iteration)
     }
 
 // This is a test to try LibTorch
-test_libtorch();
 
+
+double correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
+amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
+amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
+amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
+
+if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
+{
+  test_libtorch();
+  NavierStokesBase::ml_correction_iter += 1;
 //training_Unet_2d();
-
+}
 
 }
 
