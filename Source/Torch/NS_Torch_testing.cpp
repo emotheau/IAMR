@@ -1,7 +1,7 @@
 
 #include <NavierStokesBase.H>
 #include <AMReX_VisMF.H>
-
+#include <AMReX_PlotFileUtil.H>
 #include <torch/torch.h>
 #include <torch/script.h> // One-stop header.
 
@@ -182,6 +182,10 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   }
 */
 
+// scale input to match training script TODO: parse the MLPDE-iamr/config/UNet.yaml to directly get scaling factor value.
+
+
+  t1 = t1*0.1;
 
 // Loading the model with TorchScript
   
@@ -200,8 +204,13 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
   std::vector<torch::jit::IValue> inputs{t1};
 
+
+
   at::Tensor output = module.forward(inputs).toTensor();
   output += t1;
+
+  // reverse the scaling
+  output *= 10;
 
 //  amrex::Print() << "\n DEBUG TENSOR AFTER ML " << output << std::endl;
 
@@ -253,35 +262,20 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
 
   Snew_onegrid.setVal(0.);
+  
+  // TODO fix the time step written into the plotfile. Figure out how to get the current time step?  
+  int timestr = cur_time*100000;
+  amrex::Print() << timestr << "\n";
+  const std::string& hr_pfname = amrex::Concatenate("plotsHR/correctedPltHR",timestr); 
+  amrex::WriteSingleLevelPlotfile(hr_pfname, CorrectedState, {"x","y"}, fine_geom, cur_time, 0 );
 
-/*
-  amrex::Print() << "\n DEBUG WE ENSURE THAT Snew_onegrid is set to 0 \n";
-
-  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew_onegrid[mfi];
-  }
-*/
 
 // We average down CorrectedState to the original Snew_onegrid. Warning, we still have an unused ghost-cell here
   amrex::average_down (CorrectedState, Snew_onegrid, 0,  ncomp, ratio);
 
- /*
-  amrex::Print() << "\n DEBUG Snew_onegrid after ML and after average_down \n";
-  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew_onegrid[mfi];
-  }
-  */
-
-/*
-  amrex::Print() << "\n DEBUG FINAL SNEW BEFORE COPY \n";
-
-  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew[mfi];
-  }
-*/
+//  amrex::Print() << timestr << "\n";
+  const std::string& lr_pfname = amrex::Concatenate("plotsLR/correctedPltLR",timestr); 
+  amrex::WriteSingleLevelPlotfile(lr_pfname, Snew_onegrid, {"x","y"}, geom, cur_time, 0 );
 
 // Last step is to put back Snew_onegrid in the general State_type data
 
@@ -292,14 +286,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   VisMF::Write(Snew,"Snew_coarse_AFTER_ML");
   VisMF::Write(Snew_onegrid,"Snew_onegrid_AFTER_ML");
 
-/*
-  amrex::Print() << "\n DEBUG FINAL SNEW AFTER COPY \n";
-
-  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew[mfi];
-  }
-*/
 
 
 

@@ -17,3 +17,7 @@ Exec/run2d/Snew_onegrid_H*
 Exec/run2d/tmp_build_dir/
 *.pt
 *coarse_truth*
+plotsHR
+plotsLR
+plotfiles
+truth
