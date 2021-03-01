@@ -21,3 +21,5 @@ plotsHR
 plotsLR
 plotfiles
 truth
+*.zip
+*.ipynb

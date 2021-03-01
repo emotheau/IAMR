@@ -4,7 +4,8 @@
 #include <AMReX_PlotFileUtil.H>
 #include <torch/torch.h>
 #include <torch/script.h> // One-stop header.
-
+#include <iostream>
+#include <memory>
 
 using namespace amrex;
 
@@ -187,6 +188,10 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
   t1 = t1*0.1;
 
+  auto bytest1 = torch::jit::pickle_save(t1);
+  std::ofstream foutt1("t1.zip", std::ios::out | std::ios::binary);
+  foutt1.write(bytest1.data(), bytest1.size());
+  foutt1.close();
 // Loading the model with TorchScript
   
   torch::jit::script::Module module;
@@ -207,9 +212,18 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 
 
   at::Tensor output = module.forward(inputs).toTensor();
-  output += t1;
 
-  // reverse the scaling
+  auto bytesop = torch::jit::pickle_save(output);
+  std::ofstream foutop("output.zip", std::ios::out | std::ios::binary);
+  foutop.write(bytesop.data(), bytesop.size());
+  foutop.close();
+
+  output += t1;
+  auto bytes_op_t1 = torch::jit::pickle_save(output);
+  std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);
+  fout_op_t1.write(bytes_op_t1.data(), bytes_op_t1.size());
+  fout_op_t1.close();
+ // reverse the scaling
   output *= 10;
 
 //  amrex::Print() << "\n DEBUG TENSOR AFTER ML " << output << std::endl;

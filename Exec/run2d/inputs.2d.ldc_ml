@@ -11,7 +11,7 @@ max_step 				= -1
 # Time at which calculation stops, if max_step is not reached first.
 stop_time 				= 1 
 
-stop_interval = 10
+stop_interval = 0.11
 
 # Stop simulation when we reach steady-state
 ns.stop_when_steady 	= -1
