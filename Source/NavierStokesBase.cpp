@@ -76,9 +76,9 @@ int  NavierStokesBase::verbose     = 0;
 Real NavierStokesBase::gravity     = 0.0;
 int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
-double NavierStokesBase::sim_start_time = 0;
+Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
-
+bool NavierStokesBase::ml_correction = true;
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
 
@@ -418,6 +418,8 @@ NavierStokesBase::Initialize ()
     pp.query("benchmarking",benchmarking);
 
     pp.query("v",verbose);
+
+    pp.query("ml_correction", ml_correction);
 
 
     //
@@ -2690,11 +2692,17 @@ amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter 
 
 if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
 {
-  test_libtorch();
-  NavierStokesBase::ml_correction_iter += 1;
-//training_Unet_2d();
+  if (NavierStokesBase::ml_correction)
+  {
+    apply_correction();
+    NavierStokesBase::ml_correction_iter += 1;
+  }
+  else
+  {
+    no_ml_baseline();
+    NavierStokesBase::ml_correction_iter += 1;
+  }
 }
-
 }
 
 //

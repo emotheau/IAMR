@@ -12,11 +12,11 @@ using namespace amrex;
 
 
 void
-NavierStokesBase::test_libtorch()
+NavierStokesBase::apply_correction()
 
 {
 
-std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
+std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 // First we convert a multi-box MultiFab to a unique box 
 
@@ -26,21 +26,11 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   const Real cur_time = state[State_Type].curTime();
   FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
 
-/*
-    for (MFIter mfi(Snew,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew[mfi];
-  }
-*/
 
   // get boxArray
   BoxArray ba = Snew.boxArray();
-  // minimalBox() computes a single box to enclose all the boxes
-  // enclosedCells() converts it to a cell-centered Box
   Box bx_onegrid = ba.minimalBox().enclosedCells();
 
-  // number of cells in the coarse domain
-//  Print() << "npts in coarse domain = " << bx_onegrid.numPts() << std::endl;
 
   // Here we set that we have only 2 components
   // FIX ME : WE HAVE TO DO SOMETHING MORE GENERIC LATER
@@ -54,18 +44,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   // copy data into MultiFab with one grid
   // FIX ME : SET THAT WE START FROM X_VEL
   Snew_onegrid.ParallelCopy(Snew,0,0,ncomp,1,1);
-//    FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
-
-  /*
-    for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << Snew_onegrid[mfi];
-  }
-  */
-
-  // For debugging
-//  VisMF::Write(Snew,"Snew_coarse_b4_ML");
-//  VisMF::Write(Snew_onegrid,"Snew_onegrid_b4_ML");
 
 
 // Now we refine Snew_onegrid
@@ -89,12 +67,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   Geometry fine_geom(bx_fine_geom, geom.ProbDomain(), geom.Coord(), geom.isPeriodic());
 
 
-//amrex::Print() << "\n DEBUG bx_fine_geom = " << bx_fine_geom << std::endl;
-
-//  for (MFIter mfi(Snew_onegrid,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-//  {
-//    amrex::Print() << Snew_onegrid[mfi];
-//  }
 
 
 // Interpolating Snew_onegrid on SnewRefined
@@ -112,7 +84,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
     const FArrayBox& cfab = (Snew_onegrid)[mfi];
     const Box&  bx   = mfi.tilebox();
 
-//    amrex::Print() << "\n DEBUG bx = " << bx << std::endl;
 
 
     Vector<BCRec> bx_bcrec(ncomp);
@@ -121,20 +92,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
                          geom,fine_geom,bx_bcrec,0,0,RunOn::Host);
   }
 
-  // For debugging
-//  VisMF::Write(SnewRefined,"SnewRefined_b4_ML");
-
-  /*
-    for (MFIter mfi(SnewRefined,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << SnewRefined[mfi];
-  }
-*/
-
-// Now we convert the one grid MultiFab to a Torch tensor
-
-//  amrex::Print() << "\n DEBUG amrex::ubound(bx_fine_geom) = " << amrex::ubound(bx_fine_geom) << std::endl;
-//  amrex::Print() << "\n DEBUG amrex::lbound(bx_fine_geom) = " << amrex::lbound(bx_fine_geom) << std::endl;
 
   const auto bx_onegrid_bounds = amrex::ubound(bx_fine_geom);
 
@@ -169,19 +126,9 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
         }
       }
     }
-//    amrex::Print() << "\n DEBUG SnewRefined " << SnewRefined[mfi] << "\n";
 
     }
   }
-
-//  amrex::Print() << "Tensor t1 from array :\n" << t1 << '\n';
-
-  /*
-    for (MFIter mfi(SnewRefined,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-  {
-    amrex::Print() << SnewRefined[mfi];
-  }
-*/
 
 // scale input to match training script TODO: parse the MLPDE-iamr/config/UNet.yaml to directly get scaling factor value.
 
@@ -197,7 +144,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   torch::jit::script::Module module;
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
-//    module = torch::jit::load("traced_dummy_module_16.pt");
 
     module = torch::jit::load("default_sr_large000.pt");
 
@@ -225,8 +171,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   fout_op_t1.close();
  // reverse the scaling
   output *= 10;
-
-//  amrex::Print() << "\n DEBUG TENSOR AFTER ML " << output << std::endl;
 
 
 // Putting back the Torch Tensor to the SnewRefined multifab
@@ -258,7 +202,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
         }
       }
 
-//      amrex::Print() << "\n DEBUG fab_tmp_after_ML" << fab_tmp << "\n";
 
     }
 
@@ -266,11 +209,8 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
     amrex::ParallelFor(bx, ncomp, [fab,CorrectedState_fab]
     AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-//    amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << std::endl; 
       CorrectedState_fab(i,j,k,n) = fab(i,j,k,n);
-//       amrex::Print() << "\n DEBUG " << i <<  " " << j << " " << n << " " << fab(i,j,k,n) << " " << CorrectedState_fab(i,j,k,n) << std::endl;
     });
-//    amrex::Print() << "\n DEBUG CorrectedState " << CorrectedState[mfi] << "\n";
 
   }
 
@@ -287,7 +227,6 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
 // We average down CorrectedState to the original Snew_onegrid. Warning, we still have an unused ghost-cell here
   amrex::average_down (CorrectedState, Snew_onegrid, 0,  ncomp, ratio);
 
-//  amrex::Print() << timestr << "\n";
   const std::string& lr_pfname = amrex::Concatenate("plotsLR/correctedPltLR",timestr); 
   amrex::WriteSingleLevelPlotfile(lr_pfname, Snew_onegrid, {"x","y"}, geom, cur_time, 0 );
 
@@ -296,11 +235,83 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
   Snew.ParallelCopy(Snew_onegrid,0,0,ncomp,0,0);
   FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
 
-  // For debugging
-//  VisMF::Write(Snew,"Snew_coarse_AFTER_ML");
-//  VisMF::Write(Snew_onegrid,"Snew_onegrid_AFTER_ML");
 
 
+
+}
+
+void NavierStokesBase::no_ml_baseline()
+{
+  // Getting new state data
+  MultiFab& Snew   = get_new_data(State_Type);
+  //  Snew.FillBoundary( geom.periodicity());
+  const Real cur_time = state[State_Type].curTime();
+  FillPatch(*this,Snew,Snew.nGrow(),cur_time,State_Type,0,NUM_STATE);
+  // get boxArray
+  BoxArray ba = Snew.boxArray();
+  Box bx_onegrid = ba.minimalBox().enclosedCells();
+
+
+  // Here we set that we have only 2 components
+  // FIX ME : WE HAVE TO DO SOMETHING MORE GENERIC LATER
+  int ncomp = 2;
+
+  // BoxArray, DistributionMapping, and MultiFab with one grid
+  BoxArray ba_onegrid(bx_onegrid);
+  DistributionMapping dmap_onegrid(ba_onegrid);
+  MultiFab Snew_onegrid(ba_onegrid,dmap_onegrid,ncomp,1);
+
+  // copy data into MultiFab with one grid
+  // FIX ME : SET THAT WE START FROM X_VEL
+  Snew_onegrid.ParallelCopy(Snew,0,0,ncomp,1,1);
+
+
+// Now we refine Snew_onegrid
+
+  // create a copy of the boxarray and refine it. Use it to create a new Multifab to hold refined data
+  // FIX ME : THIS SHOULD BE SET BY USER IN INPUT FILE
+  int ratio = 2;
+
+  BoxArray baRefined = ba_onegrid;
+  baRefined.refine(ratio);
+
+  DistributionMapping dmapRefined(baRefined);
+
+  // Note that Snew_onegrid should have 0 ghost-cells because the target Torch Tensor will have 0
+  MultiFab SnewRefined(baRefined, dmapRefined, ncomp, 0);
+
+  // get geometry object from global scope and create a refined copy
+  Box bx_fine_geom = geom.Domain();
+  bx_fine_geom.refine(ratio);
+
+  Geometry fine_geom(bx_fine_geom, geom.ProbDomain(), geom.Coord(), geom.isPeriodic());
+
+// Interpolating Snew_onegrid on SnewRefined
+
+  // instantiate interpolator
+  Interpolater*  interpolater = &cell_cons_interp;
+
+  // iterate through boxes in multifab and interpolate to refined multifab
+  IntVect new_ratio(AMREX_D_DECL(ratio,ratio,ratio));
+  const IntVect& rr = new_ratio;
+
+  for (MFIter mfi(SnewRefined); mfi.isValid(); ++mfi)
+  {
+    FArrayBox& ffab = (SnewRefined)[mfi];
+    const FArrayBox& cfab = (Snew_onegrid)[mfi];
+    const Box&  bx   = mfi.tilebox();
+
+
+
+    Vector<BCRec> bx_bcrec(ncomp);
+
+    interpolater->interp(cfab,0,ffab,0,ncomp,bx,rr,
+                         geom,fine_geom,bx_bcrec,0,0,RunOn::Host);
+  }
+  int timestr = cur_time*100000;
+  amrex::Print() << timestr << "\n";
+  const std::string& hr_pfname = amrex::Concatenate("baselineHR/baselineHR",timestr); 
+  amrex::WriteSingleLevelPlotfile(hr_pfname, SnewRefined, {"x","y"}, fine_geom, cur_time, 0 );
 
 
 }

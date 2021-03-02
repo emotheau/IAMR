@@ -11,7 +11,7 @@ max_step 				= -1
 # Time at which calculation stops, if max_step is not reached first.
 stop_time 				= 1 
 
-stop_interval = 1.0
+stop_interval = 0.2
 
 # Stop simulation when we reach steady-state
 ns.stop_when_steady 	= -1
@@ -21,6 +21,9 @@ ns.steady_tol 		= 1.0e-5
 ns.init_dt              = 0.0140625  
 ns.gradp_in_checkpoint = 0
 ns.avg_in_checkpoint = 0
+
+# Specify whether ML correction should be used
+ns.ml_correction = 0
 
 #*******************************************************************************
 
