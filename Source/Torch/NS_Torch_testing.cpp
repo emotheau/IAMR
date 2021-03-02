@@ -199,7 +199,7 @@ std::cout << "\n WE ARE IN TEST_LIBTORCH ROUTINE \n";
     // Deserialize the ScriptModule from a file using torch::jit::load().
 //    module = torch::jit::load("traced_dummy_module_16.pt");
 
-    module = torch::jit::load("traced_unet_model.pt");
+    module = torch::jit::load("default_sr_large000.pt");
 
   }
   catch (const c10::Error& e) {
