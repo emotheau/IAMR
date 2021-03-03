@@ -217,8 +217,13 @@ public:
 
     void time_average(amrex::Real& time_avg, amrex::Real& time_avg_fluct, amrex::Real& dt_avg, const amrex::Real& dt_level);
 
-    void test_libtorch();
+    void apply_correction();
+    void no_ml_baseline();
     void training_Unet_2d();
+    static amrex::Real sim_start_time;
+    static int ml_correction_iter;
+    static bool ml_correction;
+    static std::string expt_dir;
 
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //

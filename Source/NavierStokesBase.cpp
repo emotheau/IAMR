@@ -1,4 +1,4 @@
-
+ 
 #include <AMReX_ParmParse.H>
 #include <AMReX_TagBox.H>
 #include <AMReX_Utility.H>
@@ -83,7 +83,10 @@ int  NavierStokesBase::verbose     = 0;
 Real NavierStokesBase::gravity     = 0.0;
 int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
-
+Real NavierStokesBase::sim_start_time = 0;
+int NavierStokesBase::ml_correction_iter = 1;
+std::string NavierStokesBase::expt_dir = ""; 
+bool NavierStokesBase::ml_correction = true;
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
 
@@ -429,6 +432,10 @@ NavierStokesBase::Initialize ()
     pp.query("benchmarking",benchmarking);
 
     pp.query("v",verbose);
+
+    pp.query("ml_correction", ml_correction);
+
+    pp.query("expt_dir", expt_dir);
 
 
     //
@@ -2524,6 +2531,8 @@ NavierStokesBase::post_restart ()
 {
     make_rho_prev_time();
     make_rho_curr_time();
+    NavierStokesBase::sim_start_time = state[State_Type].curTime();
+//    amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
 
   if (avg_interval > 0){
 
@@ -2692,12 +2701,30 @@ NavierStokesBase::post_timestep (int crse_iteration)
 
 
 // This is a test to try LibTorch
-test_libtorch();
+
 
 
 //training_Unet_2d();
 
 
+double correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
+amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
+amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
+amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
+
+if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
+{
+  if (NavierStokesBase::ml_correction)
+  {
+    apply_correction();
+    NavierStokesBase::ml_correction_iter += 1;
+  }
+  else
+  {
+    no_ml_baseline();
+    NavierStokesBase::ml_correction_iter += 1;
+  }
+}
 }
 
 //
