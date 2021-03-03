@@ -171,10 +171,11 @@ int NavierStokesBase::gradp_in_checkpoint = -1;
 // is Average in checkpoint file 
 int NavierStokesBase::average_in_checkpoint = -1;
 
+int  NavierStokesBase::do_inference          = 0;
 
-int inChannels=1, outChannels=1;
-   CUNet2d NavierStokesBase::model(inChannels,outChannels);
-   torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
+//int inChannels=1, outChannels=1;
+//CUNet2d NavierStokesBase::model(inChannels,outChannels);
+//torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 
 
 namespace
@@ -489,6 +490,8 @@ NavierStokesBase::Initialize ()
 
     pp.query("avg_interval",             avg_interval  );
     pp.query("compute_fluctuations",     compute_fluctuations  );
+
+    pp.query("do_inference",             do_inference  );
 
 #ifdef AMREX_USE_EB
     pp.query("refine_cutcells", refine_cutcells);
@@ -2699,32 +2702,31 @@ NavierStokesBase::post_timestep (int crse_iteration)
     }
 
 
+    if ( do_inference ){
 
-// This is a test to try LibTorch
+      //training_Unet_2d();
+
+      amrex::Real correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
+      amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
+      amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
+      amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
+
+      if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
+      {
+        if (NavierStokesBase::ml_correction)
+        {
+          apply_correction();
+          NavierStokesBase::ml_correction_iter += 1;
+        }
+        else
+        {
+          no_ml_baseline();
+          NavierStokesBase::ml_correction_iter += 1;
+        }
+      }
+    }
 
 
-
-//training_Unet_2d();
-
-
-double correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
-amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
-amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
-amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
-
-if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
-{
-  if (NavierStokesBase::ml_correction)
-  {
-    apply_correction();
-    NavierStokesBase::ml_correction_iter += 1;
-  }
-  else
-  {
-    no_ml_baseline();
-    NavierStokesBase::ml_correction_iter += 1;
-  }
-}
 }
 
 //
