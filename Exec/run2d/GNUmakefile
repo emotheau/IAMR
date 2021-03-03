@@ -18,8 +18,11 @@ USE_MPI     = TRUE
 USE_OMP     = FALSE
 PROFILE     = FALSE
 
-USE_CUDA = FALSE
+USE_CUDA = TRUE
 
+USE_LIBTORCH = TRUE
+LIBTORCH_DIR =	/home/emotheau/GitCodes/libtorch_cuda
+ 
 USE_SENSEI_INSITU = FALSE
 
 EBASE = amr

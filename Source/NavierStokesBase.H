@@ -26,6 +26,11 @@
 #include <AMReX_EBFluxRegister.H>
 #endif
 
+
+#include <torch/torch.h>
+//#include "cunet.h"
+
+
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
@@ -210,6 +215,20 @@ public:
     void calc_mut_LES(amrex::MultiFab*  diffusivity[BL_SPACEDIM], amrex::Real time);
 
     void time_average(amrex::Real& time_avg, amrex::Real& time_avg_fluct, amrex::Real& dt_avg, const amrex::Real& dt_level);
+
+    // Stuff related to Deep Learning with PyTorch
+    void apply_correction();
+    void no_ml_baseline();
+    void training_Unet_2d();
+    static amrex::Real sim_start_time;
+    static int ml_correction_iter;
+    static bool ml_correction;
+    static std::string expt_dir;
+
+    static int do_inference;
+    //static CUNet2d model;
+    //static torch::optim::Adam optim;
+
 
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //
@@ -815,6 +834,11 @@ public:
   //
   static bool particles_in_plotfile;
 #endif
+
+
+
+
+
 };
 
 #endif

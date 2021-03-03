@@ -1,0 +1,4 @@
+CEXE_headers += partialconv.h cunet.h
+#CEXE_sources += iamr_mol.cpp
+
+#
