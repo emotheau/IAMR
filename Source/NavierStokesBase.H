@@ -218,6 +218,7 @@ public:
     static amrex::Real sim_start_time;
     static int ml_correction_iter;
     static bool ml_correction;
+    static std::string expt_dir;
 
     ////////////////////////////////////////////////////////////////////////////
     //    NavierStokesBase public static functions                            //

@@ -220,15 +220,16 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
   // TODO fix the time step written into the plotfile. Figure out how to get the current time step?  
   int timestr = cur_time*100000;
   amrex::Print() << timestr << "\n";
-  const std::string& hr_pfname = amrex::Concatenate("plotsHR/correctedPltHR",timestr); 
-  amrex::WriteSingleLevelPlotfile(hr_pfname, CorrectedState, {"x","y"}, fine_geom, cur_time, 0 );
+  std::string  dirstring = NavierStokesBase::expt_dir + "/plotsHR/correctedPltHR";
+  const std::string& hr_pfname = amrex::Concatenate(dirstring,timestr); 
+  amrex::WriteSingleLevelPlotfile(hr_pfname, CorrectedState, {"x_velocity","y_velocity"}, fine_geom, cur_time, 0 );
 
 
 // We average down CorrectedState to the original Snew_onegrid. Warning, we still have an unused ghost-cell here
   amrex::average_down (CorrectedState, Snew_onegrid, 0,  ncomp, ratio);
 
-  const std::string& lr_pfname = amrex::Concatenate("plotsLR/correctedPltLR",timestr); 
-  amrex::WriteSingleLevelPlotfile(lr_pfname, Snew_onegrid, {"x","y"}, geom, cur_time, 0 );
+//  const std::string& lr_pfname = amrex::Concatenate("plotsLR/correctedPltLR",timestr); 
+//  amrex::WriteSingleLevelPlotfile(lr_pfname, Snew_onegrid, {"x_velocity","y_velocity"}, geom, cur_time, 0 );
 
 // Last step is to put back Snew_onegrid in the general State_type data
 
@@ -310,8 +311,9 @@ void NavierStokesBase::no_ml_baseline()
   }
   int timestr = cur_time*100000;
   amrex::Print() << timestr << "\n";
-  const std::string& hr_pfname = amrex::Concatenate("baselineHR/baselineHR",timestr); 
-  amrex::WriteSingleLevelPlotfile(hr_pfname, SnewRefined, {"x","y"}, fine_geom, cur_time, 0 );
+  std::string dirstring = NavierStokesBase::expt_dir + "baselineHR/baselineHR";
+  const std::string& hr_pfname = amrex::Concatenate(dirstring,timestr); 
+  amrex::WriteSingleLevelPlotfile(hr_pfname, SnewRefined, {"x_velocity","y_velocity"}, fine_geom, cur_time, 0 );
 
 
 }

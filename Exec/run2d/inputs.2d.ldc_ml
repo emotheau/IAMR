@@ -9,9 +9,9 @@
 max_step 				= -1
 
 # Time at which calculation stops, if max_step is not reached first.
-stop_time 				= 1 
+stop_time 				= 0 
 
-stop_interval = 0.2
+stop_interval = 20
 
 # Stop simulation when we reach steady-state
 ns.stop_when_steady 	= -1
@@ -23,8 +23,10 @@ ns.gradp_in_checkpoint = 0
 ns.avg_in_checkpoint = 0
 
 # Specify whether ML correction should be used
-ns.ml_correction = 0
+ns.ml_correction = 1
 
+# Specify ML experiment directory to store inference plotfiles
+ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/0/
 #*******************************************************************************
 
 # Number of cells in each coordinate direction at the coarsest level
@@ -120,7 +122,8 @@ ns.hi_bc             	= 5 5
 #*******************************************************************************
 
 # Continue from checkpoint 
-amr.restart 			= checkpoints/coarse_truth9999925
+amr.restart 			=/project/projectdirs/dasrepo/jpathak/iamr_expts/0/checkpoints/coarse_truth9999925
+#checkpoints/coarse_truth9999925
 
 #*******************************************************************************
 

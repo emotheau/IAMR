@@ -1,4 +1,4 @@
-
+ 
 #include <AMReX_ParmParse.H>
 #include <AMReX_TagBox.H>
 #include <AMReX_Utility.H>
@@ -78,6 +78,7 @@ int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
+std::string NavierStokesBase::expt_dir = ""; 
 bool NavierStokesBase::ml_correction = true;
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
@@ -420,6 +421,8 @@ NavierStokesBase::Initialize ()
     pp.query("v",verbose);
 
     pp.query("ml_correction", ml_correction);
+
+    pp.query("expt_dir", expt_dir);
 
 
     //
