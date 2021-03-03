@@ -83,10 +83,20 @@ int  NavierStokesBase::verbose     = 0;
 Real NavierStokesBase::gravity     = 0.0;
 int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
+
+// ML related stuff below
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
 std::string NavierStokesBase::expt_dir = ""; 
 bool NavierStokesBase::ml_correction = true;
+
+int  NavierStokesBase::do_inference          = 0;
+
+//int inChannels=1, outChannels=1;
+//CUNet2d NavierStokesBase::model(inChannels,outChannels);
+//torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
+//------------------------
+
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
 
@@ -170,12 +180,6 @@ int NavierStokesBase::gradp_in_checkpoint = -1;
 
 // is Average in checkpoint file 
 int NavierStokesBase::average_in_checkpoint = -1;
-
-int  NavierStokesBase::do_inference          = 0;
-
-//int inChannels=1, outChannels=1;
-//CUNet2d NavierStokesBase::model(inChannels,outChannels);
-//torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 
 
 namespace
@@ -434,9 +438,11 @@ NavierStokesBase::Initialize ()
 
     pp.query("v",verbose);
 
-    pp.query("ml_correction", ml_correction);
-
-    pp.query("expt_dir", expt_dir);
+    pp.query("do_inference",             do_inference  );
+    if (do_inference > 0){
+      pp.query("ml_correction", ml_correction);
+      pp.query("expt_dir", expt_dir);
+    }
 
 
     //
@@ -491,7 +497,6 @@ NavierStokesBase::Initialize ()
     pp.query("avg_interval",             avg_interval  );
     pp.query("compute_fluctuations",     compute_fluctuations  );
 
-    pp.query("do_inference",             do_inference  );
 
 #ifdef AMREX_USE_EB
     pp.query("refine_cutcells", refine_cutcells);
@@ -2534,8 +2539,11 @@ NavierStokesBase::post_restart ()
 {
     make_rho_prev_time();
     make_rho_curr_time();
+
+  if ( do_inference > 0){
     NavierStokesBase::sim_start_time = state[State_Type].curTime();
 //    amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
+  }
 
   if (avg_interval > 0){
 
@@ -2702,7 +2710,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
     }
 
 
-    if ( do_inference ){
+    if ( do_inference > 0){
 
       //training_Unet_2d();
 

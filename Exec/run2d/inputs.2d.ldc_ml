@@ -24,7 +24,7 @@ ns.avg_in_checkpoint = 0
 
 # Specify whether ML correction should be used
 ns.ml_correction = 1
-
+ns.do_inference = 1
 # Specify ML experiment directory to store inference plotfiles
 ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/0/
 #*******************************************************************************
