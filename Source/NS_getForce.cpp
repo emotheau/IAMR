@@ -181,11 +181,11 @@ NavierStokesBase::getForce (FArrayBox&       force,
      }
      else {
        force.setVal<RunOn::Gpu>(0.0, bx, Xvel, AMREX_SPACEDIM);
-       // amrex::ParallelFor(bx, AMREX_SPACEDIM, [frc]
-       // AMREX_GPU_DEVICE(int i, int j, int k, int n) noexcept
-       // {
-       // 	 frc(i,j,k,n) = 0.0_rt;
-       // });
+       amrex::ParallelFor(bx, AMREX_SPACEDIM, [frc]
+       AMREX_GPU_DEVICE(int i, int j, int k, int n) noexcept
+       {
+        	 frc(i,j,k,n) = 1.0_rt;
+       });
      }
    }
    //
