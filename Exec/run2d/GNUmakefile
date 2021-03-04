@@ -18,7 +18,7 @@ USE_MPI     = TRUE
 USE_OMP     = FALSE
 PROFILE     = FALSE
 
-USE_CUDA = TRUE
+USE_CUDA = FALSE
 
 USE_LIBTORCH = FALSE
 LIBTORCH_DIR =	/global/cscratch1/sd/jpathak/libtorch
