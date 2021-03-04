@@ -26,10 +26,10 @@
 #include <AMReX_EBFluxRegister.H>
 #endif
 
-
+#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
 //#include "cunet.h"
-
+#endif
 
 //
 // "Divu_Type" means S, where divergence U = S
