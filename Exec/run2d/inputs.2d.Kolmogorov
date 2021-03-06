@@ -9,7 +9,7 @@
 max_step 				= 100000
 
 # Time at which calculation stops, if max_step is not reached first.
-stop_time 				= -1
+stop_time 				= 200
 
 # Stop simulation when we reach steady-state
 #ns.stop_when_steady 	= 1
@@ -22,6 +22,7 @@ stop_time 				= -1
 
 # Number of cells in each coordinate direction at the coarsest level
 amr.n_cell			= 256 256
+amr.n_cell                      = 512 512
 #amr.max_grid_size		= 32
 
 #*******************************************************************************
@@ -32,7 +33,7 @@ amr.max_level			= 0 # maximum number of levels of refinement
 #*******************************************************************************
 
 # Sets the "NavierStokes" code to not be verbose
-ns.v                    = 0
+ns.v                    = 1
 
 #*******************************************************************************
 
@@ -43,7 +44,7 @@ amr.v                   = 1
 
 # Interval (in number of coarse timesteps) between checkpoint(restart) files
 amr.check_int		= 1000
-#amr.restart = chk05000
+amr.restart = chk20000
 #*******************************************************************************
 
 # Interval (in number of coarse timesteps) between plot files
@@ -120,3 +121,14 @@ ns.hi_bc             	= 0 0
 amr.derive_plot_vars    = ALL
 
 #*******************************************************************************
+
+godunov.use_ppm = true
+godunov.use_forces_in_trans = true
+
+proj.proj_tol = 1.e-10
+##proj.proj_abs_tol = 1.e-15
+#mac.mac_tol = 1.e-8
+##mac.mac_abs_tol = 1.e-15
+
+##ns.visc_abs_tol = 1.e-15
+##ns.visc_tol = 1.e-15
