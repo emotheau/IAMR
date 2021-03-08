@@ -25,3 +25,4 @@ truth
 *.ipynb
 baselineHR
 *chk*
+Util/ConvertCheckpoint/tmp_build_dir/

@@ -1,0 +1,4 @@
+Seq	Host	Starttime	JobRuntime	Send	Receive	Exitval	Signal	Command
+1	:	1614996610.872	     0.605	0	1319	255	0	./pipeline2.sh '/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/process/timestep_0_1/refined/*'
+1	:	1614996782.425	     0.456	0	1319	255	0	./pipeline2.sh '/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/process/timestep_0_1/refined/*'
+1	:	1614997316.502	     0.578	0	1319	255	0	./pipeline2.sh '/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/process/timestep_0_1/refined/*'
