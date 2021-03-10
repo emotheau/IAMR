@@ -8,8 +8,8 @@ REFINEDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_
 INPUTDIR='/project/projectdirs/dasrepo/jpathak/IAMR-EM/Exec/run2d'
 PLOTDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/test/2048/'
 
-filename=$TRUTHDIR/truth281794
-#filename='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/CHECKPOINT_FILES/NX_2048/chk281681'
+#filename=$TRUTHDIR/truth281794
+filename='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/CHECKPOINT_FILES/NX_2048/chk281681'
 $EXECDIR/amr2d.gnu.haswell.MPI.ex $INPUTDIR/inputs.2d.Kolmogorov  amr.restart=$filename amr.plotfile_on_restart=1 amr.regrid_on_restart=1 amr.n_cell= 2048 2048 amr.plot_file="$PLOTDIR/plots" amr.max_grid_size= 2048 amr.blocking_factor= 2048 max_step=0
 
 
