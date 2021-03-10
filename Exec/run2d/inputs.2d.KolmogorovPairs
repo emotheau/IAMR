@@ -6,7 +6,7 @@
 
 # Maximum number of coarse grid timesteps to be taken, if stop_time is
 #  not reached first.
-max_step 				= 100000
+max_step 				= 10000000
 
 # Time at which calculation stops, if max_step is not reached first.
 stop_time 				= -1
@@ -108,6 +108,10 @@ ns.lo_bc             	= 0 0
 
 # Boundary conditions on the high end of the domain.
 ns.hi_bc             	= 0 0  
+
+godunov.use_ppm = true
+godunov.use_forces_in_trans = true
+proj.proj_tol = 1.e-10
 
 # 0 = Interior/Periodic  3 = Symmetry
 # 1 = Inflow             4 = SlipWall

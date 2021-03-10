@@ -1,1 +1,0 @@
-/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/process/timestep_0_1/refined/*
