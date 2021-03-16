@@ -185,19 +185,22 @@ NavierStokesBase::getForce (FArrayBox&       force,
      }
      else {
        force.setVal<RunOn::Gpu>(0.0, bx, Xvel, AMREX_SPACEDIM);
-       amrex::ParallelFor(bx, [dx, prob_lo, vel_x, frc]
-       AMREX_GPU_DEVICE(int i, int j, int k) noexcept
-       {
-         AMREX_D_TERM(const amrex::Real x = prob_lo[0] + (i+0.5)*dx[0];,
-                      const amrex::Real y = prob_lo[1] + (j+0.5)*dx[1];,
-                      const amrex::Real z = prob_lo[2] + (k+0.5)*dx[2];);
-//amrex::Print() << "\n DEBUG i=  " << i << " j= " << j << " xvel= " << vel_x(i,j,k,0) << "\n";
-       	 frc(i,j,k,0) = sin(4*y) - 0.1*vel_x(i,j,k,0);
-         frc(i,j,k,1) = - 0.1*vel_x(i,j,k,1);
+
+       if (NavierStokesBase::do_custom_forcing){
+         amrex::ParallelFor(bx, [dx, prob_lo, vel_x, frc]
+         AMREX_GPU_DEVICE(int i, int j, int k) noexcept
+         {
+           AMREX_D_TERM(const amrex::Real x = prob_lo[0] + (i+0.5)*dx[0];,
+                        const amrex::Real y = prob_lo[1] + (j+0.5)*dx[1];,
+                        const amrex::Real z = prob_lo[2] + (k+0.5)*dx[2];);
+
+             frc(i,j,k,0) = sin(4*y) - 0.1*vel_x(i,j,k,0);
+             frc(i,j,k,1) = - 0.1*vel_x(i,j,k,1);
 #if ( AMREX_SPACEDIM == 3 )
-         frc(i,j,k,2) = 0.;
+             frc(i,j,k,2) = 0.;
 #endif
-       });
+         });
+       }
      }
    }
    //

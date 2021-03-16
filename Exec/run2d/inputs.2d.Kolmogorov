@@ -22,7 +22,7 @@ stop_time 				= 200
 
 # Number of cells in each coordinate direction at the coarsest level
 amr.n_cell			= 256 256
-amr.n_cell                      = 512 512
+#amr.n_cell                      = 512 512
 #amr.max_grid_size		= 32
 
 #*******************************************************************************
@@ -44,7 +44,7 @@ amr.v                   = 1
 
 # Interval (in number of coarse timesteps) between checkpoint(restart) files
 amr.check_int		= 1000
-amr.restart = chk20000
+#amr.restart = chk20000
 #*******************************************************************************
 
 # Interval (in number of coarse timesteps) between plot files
@@ -73,6 +73,7 @@ ns.scal_diff_coefs      = 0.0
 #*******************************************************************************
 # Initialize from rest with constant density = 1
 prob.probtype = 1
+ns.do_custom_forcing = 1
 
 # Forcing term defaults to  rho * abs(gravity) "down"
 ns.gravity              = 0.0  

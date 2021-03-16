@@ -763,6 +763,7 @@ public:
     static int  do_scalar_update_in_order;  // Flags to allow evaluation of source terms
     static amrex::Vector<int> scalarUpdateOrder;
     static int  getForceVerbose;            // Does exactly what it says on the tin
+    static int  do_custom_forcing;
     //
     // LES parameters
     //
