@@ -132,8 +132,10 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 // scale input to match training script TODO: parse the MLPDE-iamr/config/UNet.yaml to directly get scaling factor value.
 
+  float inp_scale_factor = 0.4;
+  float target_scale_factor = 4.0;
 
-  t1 = t1*0.1;
+  t1 = t1*inp_scale_factor;
 
   auto bytest1 = torch::jit::pickle_save(t1);
   std::ofstream foutt1("t1.zip", std::ios::out | std::ios::binary);
@@ -145,7 +147,7 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
 
-    module = torch::jit::load("default_sr_large000.pt");
+    module = torch::jit::load("kolmogorov256crop1280.pt");
 
   }
   catch (const c10::Error& e) {
@@ -164,13 +166,15 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
   foutop.write(bytesop.data(), bytesop.size());
   foutop.close();
 
-  output += t1;
+//  output += t1;
+  output = output/target_scale_factor + t1/inp_scale_factor;
+
   auto bytes_op_t1 = torch::jit::pickle_save(output);
   std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);
   fout_op_t1.write(bytes_op_t1.data(), bytes_op_t1.size());
   fout_op_t1.close();
  // reverse the scaling
-  output *= 10;
+//  output *= 10;
 
 
 // Putting back the Torch Tensor to the SnewRefined multifab
@@ -243,6 +247,7 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 void NavierStokesBase::no_ml_baseline()
 {
+  amrex::Print() << "no ml baseline routine";
   // Getting new state data
   MultiFab& Snew   = get_new_data(State_Type);
   //  Snew.FillBoundary( geom.periodicity());
@@ -311,7 +316,7 @@ void NavierStokesBase::no_ml_baseline()
   }
   int timestr = cur_time*100000;
   amrex::Print() << timestr << "\n";
-  std::string dirstring = NavierStokesBase::expt_dir + "baselineHR/baselineHR";
+  std::string dirstring = NavierStokesBase::expt_dir + "/baselineHR/baselineHR";
   const std::string& hr_pfname = amrex::Concatenate(dirstring,timestr); 
   amrex::WriteSingleLevelPlotfile(hr_pfname, SnewRefined, {"x_velocity","y_velocity"}, fine_geom, cur_time, 0 );
 

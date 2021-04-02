@@ -26,10 +26,10 @@
 #include<AMReX_PlotFileUtil.H>
 
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
 //#include "cunet.h"
-#endif
+//#endif
 
 
 using namespace amrex;
@@ -2709,7 +2709,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
       time_average(time_avg[level], time_avg_fluct[level], dt_avg[level], dt_level);
     }
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
 
     if ( do_inference > 0){
 
@@ -2722,7 +2722,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
 
       if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
       {
-        if (NavierStokesBase::ml_correction)
+        if (NavierStokesBase::ml_correction > 0)
         {
           apply_correction();
           NavierStokesBase::ml_correction_iter += 1;
@@ -2735,7 +2735,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
       }
     }
 
-#endif
+//#endif
 
 }
 

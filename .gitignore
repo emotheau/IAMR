@@ -27,3 +27,9 @@ baselineHR
 *chk*
 Util/ConvertCheckpoint/tmp_build_dir/
 *plt*
+*.csv
+*.eps
+*.h5
+*.json
+*.out
+*.txt

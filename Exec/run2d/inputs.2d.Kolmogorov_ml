@@ -11,7 +11,7 @@ max_step 				= -1
 # Time at which calculation stops, if max_step is not reached first.
 stop_time 				= 0 
 
-stop_interval = 20
+stop_interval = 50
 
 # Stop simulation when we reach steady-state
 ns.stop_when_steady 	= -1
@@ -26,7 +26,7 @@ ns.avg_in_checkpoint = 0
 ns.ml_correction = 1
 ns.do_inference = 1
 # Specify ML experiment directory to store inference plotfiles
-ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/0/
+ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/inference/1 
 #*******************************************************************************
 
 # Number of cells in each coordinate direction at the coarsest level
@@ -72,7 +72,7 @@ ns.init_shrink          = 0.3  # factor which multiplies the very first time ste
 #*******************************************************************************
 
 # Viscosity coefficient 
-ns.vel_visc_coef        = 0.0001
+ns.vel_visc_coef        = 0.001
 
 #*******************************************************************************
 
@@ -100,20 +100,24 @@ geometry.coord_sys   	=  0
 geometry.prob_lo     	=  0. 0. 
 
 # Physical dimensions of the high end of the domain.
-geometry.prob_hi     	=  1. 1. 
+geometry.prob_hi     	=  6.283185307179586 6.283185307179586 
 
 #*******************************************************************************
 
 #Set to 1 if periodic in that direction
-geometry.is_periodic 	=  0 0
+geometry.is_periodic 	=  1 1
 
 #*******************************************************************************
 
 # Boundary conditions on the low end of the domain.
-ns.lo_bc             	= 5 5  
+ns.lo_bc             	= 0 0  
 
 # Boundary conditions on the high end of the domain.
-ns.hi_bc             	= 5 5  
+ns.hi_bc             	= 0 0  
+
+godunov.use_ppm = true
+godunov.use_forces_in_trans = true
+proj.proj_tol = 1.e-10
 
 # 0 = Interior/Periodic  3 = Symmetry
 # 1 = Inflow             4 = SlipWall
@@ -122,9 +126,7 @@ ns.hi_bc             	= 5 5
 #*******************************************************************************
 
 # Continue from checkpoint 
-amr.restart 			=/project/projectdirs/dasrepo/jpathak/iamr_expts/0/checkpoints/coarse_truth9999925
-#checkpoints/coarse_truth9999925
-
+amr.restart 			=/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/3/coarse/coarse_truth492009/
 #*******************************************************************************
 
 # Add vorticity to the variables in the plot files.
