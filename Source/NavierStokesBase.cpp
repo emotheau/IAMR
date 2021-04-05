@@ -88,7 +88,7 @@ int  NavierStokesBase::NUM_STATE   = 0;
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
 std::string NavierStokesBase::expt_dir = ""; 
-bool NavierStokesBase::ml_correction = true;
+bool NavierStokesBase::ml_correction = false;
 
 int  NavierStokesBase::do_inference          = 0;
 
@@ -2709,33 +2709,33 @@ NavierStokesBase::post_timestep (int crse_iteration)
       time_average(time_avg[level], time_avg_fluct[level], dt_avg[level], dt_level);
     }
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
 
-    if ( do_inference > 0){
+  if ( do_inference > 0){
 
-      //training_Unet_2d();
+    //training_Unet_2d();
 
-      amrex::Real correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
-      amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
-      amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
-      amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
+    amrex::Real correctionTime = state[State_Type].curTime() - NavierStokesBase::sim_start_time;
+    amrex::Print() << "CORRECTION TIME " << correctionTime << "\n"; 
+    amrex::Print() << "CURRENT TIME " << state[State_Type].curTime() << "\n";
+    amrex::Print() << "ML_CORRECTION_ITER " << NavierStokesBase::ml_correction_iter << "\n";
 
-      if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
+    if (correctionTime > NavierStokesBase::ml_correction_iter*0.1)
+    {
+      if (NavierStokesBase::ml_correction > 0)
       {
-        if (NavierStokesBase::ml_correction > 0)
-        {
-          apply_correction();
-          NavierStokesBase::ml_correction_iter += 1;
-        }
-        else
-        {
-          no_ml_baseline();
-          NavierStokesBase::ml_correction_iter += 1;
-        }
+        apply_correction();
+        NavierStokesBase::ml_correction_iter += 1;
+      }
+      else
+      {
+        no_ml_baseline();
+        NavierStokesBase::ml_correction_iter += 1;
       }
     }
+  }
 
-//#endif
+#endif
 
 }
 

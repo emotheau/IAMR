@@ -44,13 +44,13 @@ def getTimestampedDictX(dirpath):
    
 
 
-idx = '5'
+idx = '0'
 
-basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/' + idx #'/project/projectdirs/dasrepo/jpathak/iamr_data/ldc/case1a'
+basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256'#'/project/projectdirs/dasrepo/jpathak/iamr_data/ldc/case1a'
 
 X_dir = basedir + '/plots'
 X_tilde_dir = basedir + '/refined_plots'
-h5dir = '/global/cscratch1/sd/jpathak/iamr_training_pairs/kolmogorov/256/'
+#h5dir = '/global/cscratch1/sd/jpathak/iamr_training_pairs/kolmogorov/256/'
 
 #if not os.path.exists(h5dir):
 #    os.makedirs(h5dir)
