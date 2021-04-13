@@ -14,7 +14,7 @@ DIM         = 2
 COMP        = gnu
 
 DEBUG       = FALSE
-USE_MPI     = TRUE
+USE_MPI     = FALSE
 USE_OMP     = FALSE
 PROFILE     = FALSE
 
@@ -27,7 +27,6 @@ USE_SENSEI_INSITU = FALSE
 
 EBASE = amr
 
-Bpack   := ./Make.package
 Blocs   := .
 
 include $(TOP)/Exec/Make.IAMR

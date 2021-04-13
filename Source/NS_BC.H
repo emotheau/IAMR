@@ -35,7 +35,7 @@ static int tang_gradp_bc[] =
 
 static int temp_bc[] =
 {
-    INT_DIR, EXT_DIR, HOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, FOEXTRAP
+    INT_DIR, EXT_DIR, HOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
 };
 
 static int divu_bc[] =
@@ -51,9 +51,4 @@ static int dsdt_bc[] =
 static int average_bc[] =
 {
     INT_DIR, INT_DIR, INT_DIR, INT_DIR,      INT_DIR,      INT_DIR
-};
-
-static RegType project_bc [] =
-{
-    interior, inflow, outflow, refWall, refWall, refWall
 };
