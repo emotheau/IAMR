@@ -85,7 +85,7 @@ int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
 
 // ML related stuff below
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
 std::string NavierStokesBase::expt_dir = ""; 
@@ -101,7 +101,7 @@ int  NavierStokesBase::do_inference          = 0;
 //CUNet2d NavierStokesBase::model(inChannels,outChannels);
 //torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 //------------------------
-#endif
+//#endif
 
 
 torch::jit::script::Module NavierStokesBase::module;
