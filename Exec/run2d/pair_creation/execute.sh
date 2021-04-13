@@ -7,11 +7,11 @@ rm logfile_pipe1.txt
 rm logfile_pipe2.txt
 rm files.txt
 
-idx=5
+idx=0
 
 TRUTHDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/data/256/'$idx
-REFINEDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/'$idx'/refined'
-TIMESTEPDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/'$idx'/timestepped'
+REFINEDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/ur8/'$idx'/refined'
+TIMESTEPDIR='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/ur8/'$idx'/timestepped'
 
 ./get_filelog.sh $TRUTHDIR
 

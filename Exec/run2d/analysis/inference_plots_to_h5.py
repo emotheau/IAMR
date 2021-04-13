@@ -5,6 +5,7 @@ import h5py
 import os
 from collections import OrderedDict
 from yt.funcs import mylog
+import sys
 mylog.setLevel(40) #set yt log level to ERROR
 import pandas as pd
 # function to get a dictonary of snapshots in a directory ordered by code time
@@ -69,13 +70,13 @@ def csv_to_dict(filename):
 
 
 
-basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/inference/1'
+basedir = sys.argv[1] #'/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/inference/3'
 
 ml_dir = basedir + '/plotsHR'
 baseline_dir = basedir + '/baselineHR'
-h5dir = basedir + '/h5' 
+h5dir = sys.argv[2]#'/global/cscratch1/sd/jpathak/iamr_inference/kolmogorov/3' + '/h5' 
 truth_dir = '/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/3/plots'
-truth_csv_name = "X_dict_3.csv"
+truth_csv_name = "/project/projectdirs/dasrepo/jpathak/IAMR-EM/Exec/run2d/analysis/X_dict_3.csv"
 
 if not os.path.exists(h5dir):
     os.makedirs(h5dir)
@@ -100,9 +101,10 @@ arr_iter = 0
 
 for idx, ml_filename in enumerate(list(ml_dict.keys())):
 
-    print(ml_filename)
+    print(idx)
     ml_time = ml_dict[ml_filename]
     truth_filename = truth_dict[str(ml_time)]
+    print("ml time ", ml_time)
     baseline_filename = baseline_dict[ml_time]
     ml_path = os.path.join(ml_dir, ml_filename)
     truth_path = os.path.join(truth_dir, truth_filename)

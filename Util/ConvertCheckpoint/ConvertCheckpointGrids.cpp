@@ -135,8 +135,8 @@ static void ScanArguments() {
     if(pp.contains("flag_eb")) {
       pp.get("flag_eb", flag_eb);
     }
-    if (user_ratio != 2 && user_ratio != 4)
-       amrex::Abort("user_ratio must be 2 or 4");
+//    if (user_ratio != 2 && user_ratio != 4)
+//       amrex::Abort("user_ratio must be 2 or 4");
 
     if (interp_kind != "refine" && interp_kind != "coarsen" )
        amrex::Abort("interp_kind must be set to `refine` or `coarsen`");

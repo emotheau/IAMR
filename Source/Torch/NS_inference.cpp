@@ -50,7 +50,10 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
   // create a copy of the boxarray and refine it. Use it to create a new Multifab to hold refined data
   // FIX ME : THIS SHOULD BE SET BY USER IN INPUT FILE
-  int ratio = 2;
+  int ratio = NavierStokesBase::ml_refinement_ratio;
+  
+  amrex::Print() << "ml correction ratio: " <<  ratio << "\n";
+
 
   BoxArray baRefined = ba_onegrid;
   baRefined.refine(ratio);
@@ -132,28 +135,29 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 // scale input to match training script TODO: parse the MLPDE-iamr/config/UNet.yaml to directly get scaling factor value.
 
-  float inp_scale_factor = 0.4;
-  float target_scale_factor = 4.0;
+//  float inp_scale_factor = 0.4;
+//  float target_scale_factor = 4.0;
 
-  t1 = t1*inp_scale_factor;
+  t1 = t1*NavierStokesBase::inp_scale_factor;
 
-  auto bytest1 = torch::jit::pickle_save(t1);
-  std::ofstream foutt1("t1.zip", std::ios::out | std::ios::binary);
-  foutt1.write(bytest1.data(), bytest1.size());
-  foutt1.close();
+//  auto bytest1 = torch::jit::pickle_save(t1);
+//  std::ofstream foutt1("t1.zip", std::ios::out | std::ios::binary);
+//  foutt1.write(bytest1.data(), bytest1.size());
+//  foutt1.close();
 // Loading the model with TorchScript
   
-  torch::jit::script::Module module;
-  try {
-    // Deserialize the ScriptModule from a file using torch::jit::load().
+//  torch::jit::script::module module;
+//  try {
+//    // deserialize the scriptmodule from a file using torch::jit::load().
+//
+//    module = torch::jit::load("kolmogorov256crop1280.pt");
+//
+//  }
+//  catch (const c10::error& e) {
+//    amrex::abort( "error loading the model\n");
+//  }
 
-    module = torch::jit::load("kolmogorov256crop1280.pt");
-
-  }
-  catch (const c10::Error& e) {
-    amrex::Abort( "error loading the model\n");
-  }
-
+//  module = NavierStokesBase::module;
 
   std::vector<torch::jit::IValue> inputs{t1};
 
@@ -161,18 +165,17 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
   at::Tensor output = module.forward(inputs).toTensor();
 
-  auto bytesop = torch::jit::pickle_save(output);
-  std::ofstream foutop("output.zip", std::ios::out | std::ios::binary);
-  foutop.write(bytesop.data(), bytesop.size());
-  foutop.close();
+//  auto bytesop = torch::jit::pickle_save(output);
+//  std::ofstream foutop("output.zip", std::ios::out | std::ios::binary);
+//  foutop.write(bytesop.data(), bytesop.size());
+//  foutop.close();
 
-//  output += t1;
-  output = output/target_scale_factor + t1/inp_scale_factor;
+  output = output/NavierStokesBase::target_scale_factor + t1/NavierStokesBase::inp_scale_factor;
 
-  auto bytes_op_t1 = torch::jit::pickle_save(output);
-  std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);
-  fout_op_t1.write(bytes_op_t1.data(), bytes_op_t1.size());
-  fout_op_t1.close();
+//  auto bytes_op_t1 = torch::jit::pickle_save(output);
+//  std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);
+//  fout_op_t1.write(bytes_op_t1.data(), bytes_op_t1.size());
+//  fout_op_t1.close();
  // reverse the scaling
 //  output *= 10;
 
@@ -276,7 +279,9 @@ void NavierStokesBase::no_ml_baseline()
 
   // create a copy of the boxarray and refine it. Use it to create a new Multifab to hold refined data
   // FIX ME : THIS SHOULD BE SET BY USER IN INPUT FILE
-  int ratio = 2;
+  int ratio = NavierStokesBase::ml_refinement_ratio;
+
+  amrex::Print() << "baseline ratio " << ratio << "\n";
 
   BoxArray baRefined = ba_onegrid;
   baRefined.refine(ratio);

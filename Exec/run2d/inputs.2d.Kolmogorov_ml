@@ -23,10 +23,10 @@ ns.gradp_in_checkpoint = 0
 ns.avg_in_checkpoint = 0
 
 # Specify whether ML correction should be used
-ns.ml_correction = 1
+ns.ml_correction = 0
 ns.do_inference = 1
 # Specify ML experiment directory to store inference plotfiles
-ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/inference/1 
+ns.expt_dir = /project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/inference/3 
 #*******************************************************************************
 
 # Number of cells in each coordinate direction at the coarsest level
@@ -51,14 +51,13 @@ amr.v                   = 1
 #*******************************************************************************
 
 # Interval (in number of coarse timesteps) between checkpoint(restart) files
-amr.check_per		= -1
-
+amr.check_per		= 1000000
 #*******************************************************************************
 
 # Interval (in number of coarse timesteps) between plot files
 #amr.plot_int		= -1
-amr.plot_per = 0.1
-amr.plotfile_on_restart = 0
+amr.plot_per = 1000000
+amr.plotfile_on_restart = -1
 #*******************************************************************************
 
 # CFL number to be used in calculating the time step : dt = dx / max(velocity)
@@ -126,7 +125,7 @@ proj.proj_tol = 1.e-10
 #*******************************************************************************
 
 # Continue from checkpoint 
-amr.restart 			=/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/3/coarse/coarse_truth492009/
+amr.restart 			= /project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/ur4/3/coarse/coarse_truth492009/
 #*******************************************************************************
 
 # Add vorticity to the variables in the plot files.

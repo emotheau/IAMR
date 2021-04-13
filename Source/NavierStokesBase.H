@@ -26,10 +26,11 @@
 #include <AMReX_EBFluxRegister.H>
 #endif
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
+#include <torch/script.h> // One-stop header.
 //#include "cunet.h"
-#endif
+//#endif
 
 //
 // "Divu_Type" means S, where divergence U = S
@@ -225,10 +226,16 @@ public:
     static int ml_correction_iter;
     static bool ml_correction;
     static std::string expt_dir;
+    static std::string ml_ckpt_path;
+    static int ml_refinement_ratio;
+    static amrex::Real inp_scale_factor;
+    static amrex::Real target_scale_factor;
+    static bool history;
 
     static int do_inference;
     //static CUNet2d model;
     //static torch::optim::Adam optim;
+    static torch::jit::script::Module module;
 
 
     ////////////////////////////////////////////////////////////////////////////

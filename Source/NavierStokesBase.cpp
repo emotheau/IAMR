@@ -28,6 +28,7 @@
 
 //#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
+#include <torch/script.h> // One-stop header.
 //#include "cunet.h"
 //#endif
 
@@ -88,14 +89,20 @@ int  NavierStokesBase::NUM_STATE   = 0;
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
 std::string NavierStokesBase::expt_dir = ""; 
+std::string NavierStokesBase::ml_ckpt_path = "";
+int NavierStokesBase::ml_refinement_ratio = 1;
+Real NavierStokesBase::inp_scale_factor = 1.0;
+Real NavierStokesBase::target_scale_factor = 1.0;
+bool NavierStokesBase::history = false;
 bool NavierStokesBase::ml_correction = false;
-
 int  NavierStokesBase::do_inference          = 0;
 
 //int inChannels=1, outChannels=1;
 //CUNet2d NavierStokesBase::model(inChannels,outChannels);
 //torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 //------------------------
+
+torch::jit::script::Module NavierStokesBase::module;
 
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
@@ -442,6 +449,11 @@ NavierStokesBase::Initialize ()
     if (do_inference > 0){
       pp.query("ml_correction", ml_correction);
       pp.query("expt_dir", expt_dir);
+      pp.query("ml_ckpt_path", ml_ckpt_path);
+      pp.query("ml_refinement_ratio", ml_refinement_ratio);
+      pp.query("inp_scale_factor", inp_scale_factor);
+      pp.query("target_scale_factor", target_scale_factor);
+      pp.query("history", history);
     }
 
 
@@ -2542,7 +2554,21 @@ NavierStokesBase::post_restart ()
 
   if ( do_inference > 0){
     NavierStokesBase::sim_start_time = state[State_Type].curTime();
-//    amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
+    amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
+    if (ml_correction > 0){
+      amrex::Print() << "loading model" << NavierStokesBase::sim_start_time;
+//      torch::jit::script::Module module;
+      try {
+        // Deserialize the ScriptModule from a file using torch::jit::load().
+    
+        NavierStokesBase::module = torch::jit::load(NavierStokesBase::ml_ckpt_path);
+        NavierStokesBase::module.eval();
+    
+      }
+      catch (const c10::Error& e) {
+        amrex::Abort( "error loading the model\n");
+      }
+    }
   }
 
   if (avg_interval > 0){
@@ -2709,7 +2735,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
       time_average(time_avg[level], time_avg_fluct[level], dt_avg[level], dt_level);
     }
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
 
   if ( do_inference > 0){
 
@@ -2735,7 +2761,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
     }
   }
 
-#endif
+//#endif
 
 }
 

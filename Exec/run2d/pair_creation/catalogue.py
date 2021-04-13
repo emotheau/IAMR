@@ -5,6 +5,7 @@ import h5py
 import os
 from collections import OrderedDict
 from yt.funcs import mylog
+import sys
 mylog.setLevel(40) #set yt log level to ERROR
 import pandas as pd
 # function to get a dictonary of snapshots in a directory ordered by code time
@@ -44,9 +45,9 @@ def getTimestampedDictX(dirpath):
    
 
 
-idx = '0'
+idx = str(sys.argv[1])
 
-basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256'#'/project/projectdirs/dasrepo/jpathak/iamr_data/ldc/case1a'
+basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/ur8/' + idx   #'/project/projectdirs/dasrepo/jpathak/iamr_data/ldc/case0a'
 
 X_dir = basedir + '/plots'
 X_tilde_dir = basedir + '/refined_plots'
@@ -83,8 +84,8 @@ def csv_to_dict(filename):
     return(odict)
 
 
-dict_to_csv(X_dict, "X_dict_" + idx )
-dict_to_csv(X_tilde_dict, "X_tilde_dict_" + idx)
+dict_to_csv(X_dict, "X_dict_ur8" + idx )
+dict_to_csv(X_tilde_dict, "X_tilde_dict_ur8" + idx)
 
 #X_dict = csv_to_dict("X_dict.csv")
 #X_tilde_dict = csv_to_dict("X_tilde_dict.csv")
