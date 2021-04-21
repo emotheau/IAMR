@@ -100,6 +100,56 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
   torch::Tensor t1 = torch::zeros({1,ncomp,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
 
+  Print() << "bx_onegrid_bounds" << bx_onegrid_bounds.x+1 << "\n";
+
+  torch::Tensor t0 = torch::zeros({1,ncomp,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
+  // create torch tensor to load fine state at t = 0 to use as the history input
+  if (ml_correction_iter == 1){
+    if (NavierStokesBase::history){
+    
+      Print() << "bx_onegrid_bounds" << bx_onegrid_bounds.x+1 << "\n";
+      std::string plt = "plt"; //NavierStokesBase::fine_init_plot;
+      std::string mfname = plt + "/Level_0/Cell";
+      MultiFab mf;
+      VisMF::Read(mf,mfname);
+    
+      Print() << "BoxArray: " << mf.boxArray() << std::endl;
+      Print() << "DMap: " << mf.DistributionMap() << std::endl;
+      Print() << "ncomp: " << mf.nComp() << std::endl;
+      int ncomp_hist = mf.nComp();
+      #ifdef _OPENMP
+      #pragma omp parallel if (Gpu::notInLaunchRegion())
+      #endif
+        for (MFIter mfi(mf,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+          const Box& bx = mfi.tilebox();
+          auto const& CorrectedState_fab = mf.array(mfi);
+          FArrayBox  fab_tmp(bx,ncomp);
+          auto       fab  = fab_tmp.array(0);
+      
+          {
+            for (int n = 0; n < ncomp; n++ )
+            {
+              for (int jj = 0; jj < bx_onegrid_bounds.x + 1; jj++ )
+              {
+                for (int ii = 0; ii < bx_onegrid_bounds.y + 1; ii++ )
+                {
+                  t0[0][n][ii][jj] = fab(ii,jj,0,n);
+                  //std::cout << fab(ii,jj,0,n) << "\n" ;
+                }
+              }
+            }
+      
+      
+          }
+  
+  
+        }
+    }
+  }
+
+
+
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -137,6 +187,15 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 //  float inp_scale_factor = 0.4;
 //  float target_scale_factor = 4.0;
+  amrex::Print() << "scope of inp_scale_factor" << inp_scale_factor << "\n";
+
+  if (NavierStokesBase::history){
+
+    Print() << "concatenating" << "\n";
+
+    t1 = torch::cat({t1,t0});
+
+  }
 
   t1 = t1*NavierStokesBase::inp_scale_factor;
 
@@ -171,6 +230,11 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 //  foutop.close();
 
   output = output/NavierStokesBase::target_scale_factor + t1/NavierStokesBase::inp_scale_factor;
+
+
+  if (NavierStokesBase::history){
+    at::Tensor t0 = output;
+  }
 
 //  auto bytes_op_t1 = torch::jit::pickle_save(output);
 //  std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);

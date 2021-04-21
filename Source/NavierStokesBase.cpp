@@ -440,7 +440,7 @@ NavierStokesBase::Initialize ()
 
     pp.query("v",verbose);
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
     pp.query("do_inference",             do_inference  );
     if (do_inference > 0){
       pp.query("ml_correction", ml_correction);
@@ -451,7 +451,7 @@ NavierStokesBase::Initialize ()
       pp.query("target_scale_factor", target_scale_factor);
       pp.query("history", history);
     }
-#endif
+//#endif
 
     //
     // Get timestepping parameters.
@@ -2379,7 +2379,7 @@ NavierStokesBase::post_restart ()
     make_rho_prev_time();
     make_rho_curr_time();
 
-#ifdef AMREX_USE_LIBTORCH
+//#ifdef AMREX_USE_LIBTORCH
   if ( do_inference > 0){
     NavierStokesBase::sim_start_time = state[State_Type].curTime();
     amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
@@ -2398,7 +2398,7 @@ NavierStokesBase::post_restart ()
       }
     }
   }
-#endif
+//#endif
 
   if (avg_interval > 0){
 
