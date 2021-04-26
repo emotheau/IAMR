@@ -231,6 +231,8 @@ public:
     //static CUNet2d model;
     //static torch::optim::Adam optim;
     static torch::jit::script::Module module;
+    static torch::Tensor t_last;
+    static std::string fine_init_plot;
 
 
     ////////////////////////////////////////////////////////////////////////////

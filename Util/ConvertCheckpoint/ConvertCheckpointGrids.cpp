@@ -296,7 +296,6 @@ static void ReadCheckpointFile(const std::string& fileName) {
 
         int nsets;
         is >> nsets;
-
         nsets_save[ii] = nsets;
 
         falRef.state[ii].old_data = 0;

@@ -14,7 +14,7 @@ USE_MPI     = FALSE
 
 COMP      = g++
 
-EBASE = ConvertCheckpointGrids
+EBASE = testloadplt
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 

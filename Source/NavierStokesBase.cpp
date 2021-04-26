@@ -96,7 +96,8 @@ Real NavierStokesBase::target_scale_factor = 1.0;
 bool NavierStokesBase::history = false;
 bool NavierStokesBase::ml_correction = false;
 int  NavierStokesBase::do_inference          = 0;
-
+torch::Tensor NavierStokesBase::t_last;
+std::string NavierStokesBase::fine_init_plot;
 //int inChannels=1, outChannels=1;
 //CUNet2d NavierStokesBase::model(inChannels,outChannels);
 //torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
@@ -450,6 +451,7 @@ NavierStokesBase::Initialize ()
       pp.query("inp_scale_factor", inp_scale_factor);
       pp.query("target_scale_factor", target_scale_factor);
       pp.query("history", history);
+      pp.query("fine_init_plot", fine_init_plot);
     }
 //#endif
 
@@ -2396,6 +2398,7 @@ NavierStokesBase::post_restart ()
       catch (const c10::Error& e) {
         amrex::Abort( "error loading the model\n");
       }
+
     }
   }
 //#endif

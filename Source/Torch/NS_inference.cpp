@@ -102,13 +102,14 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
   Print() << "bx_onegrid_bounds" << bx_onegrid_bounds.x+1 << "\n";
 
-  torch::Tensor t0 = torch::zeros({1,ncomp,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
   // create torch tensor to load fine state at t = 0 to use as the history input
   if (ml_correction_iter == 1){
+    Print() << "loading ground truth at t = 1" << "\n";
+    t_last = torch::zeros({1,ncomp,bx_onegrid_bounds.x+1,bx_onegrid_bounds.y+1}); 
     if (NavierStokesBase::history){
     
       Print() << "bx_onegrid_bounds" << bx_onegrid_bounds.x+1 << "\n";
-      std::string plt = "plt"; //NavierStokesBase::fine_init_plot;
+      std::string plt = NavierStokesBase::fine_init_plot;
       std::string mfname = plt + "/Level_0/Cell";
       MultiFab mf;
       VisMF::Read(mf,mfname);
@@ -134,7 +135,7 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
               {
                 for (int ii = 0; ii < bx_onegrid_bounds.y + 1; ii++ )
                 {
-                  t0[0][n][ii][jj] = fab(ii,jj,0,n);
+                  t_last[0][n][ii][jj] = fab(ii,jj,0,n);
                   //std::cout << fab(ii,jj,0,n) << "\n" ;
                 }
               }
@@ -148,6 +149,10 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
     }
   }
 
+  auto bytest0 = torch::jit::pickle_save(t_last);
+  std::ofstream fout_t0("t_last.zip", std::ios::out | std::ios::binary);
+  fout_t0.write(bytest0.data(), bytest0.size());
+  fout_t0.close();
 
 
 #ifdef _OPENMP
@@ -183,21 +188,37 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
     }
   }
 
+  auto bytest1 = torch::jit::pickle_save(t1);
+  std::ofstream fout_t1("t1.zip", std::ios::out | std::ios::binary);
+  fout_t1.write(bytest1.data(), bytest1.size());
+  fout_t1.close();
+
 // scale input to match training script TODO: parse the MLPDE-iamr/config/UNet.yaml to directly get scaling factor value.
 
 //  float inp_scale_factor = 0.4;
 //  float target_scale_factor = 4.0;
   amrex::Print() << "scope of inp_scale_factor" << inp_scale_factor << "\n";
 
+  torch::Tensor t2;
   if (NavierStokesBase::history){
 
     Print() << "concatenating" << "\n";
 
-    t1 = torch::cat({t1,t0});
+    t2 = NavierStokesBase::inp_scale_factor*torch::cat({t1,t_last}, 1);
+   // std::vector<torch::jit::IValue> inputs{t2};
+
+  
+    auto bytesop = torch::jit::pickle_save(t2);
+    std::ofstream foutop("conc_t1_t_last.zip", std::ios::out | std::ios::binary);
+    foutop.write(bytesop.data(), bytesop.size());
+    foutop.close();
+  } else{
+
+    t2 = t1*NavierStokesBase::inp_scale_factor;
+    //std::vector<torch::jit::IValue> inputs{t2};
 
   }
-
-  t1 = t1*NavierStokesBase::inp_scale_factor;
+//  t1 = t1*NavierStokesBase::inp_scale_factor;
 
 //  auto bytest1 = torch::jit::pickle_save(t1);
 //  std::ofstream foutt1("t1.zip", std::ios::out | std::ios::binary);
@@ -218,28 +239,26 @@ std::cout << "\n WE ARE IN apply_correction ROUTINE \n";
 
 //  module = NavierStokesBase::module;
 
-  std::vector<torch::jit::IValue> inputs{t1};
-
-
+  std::vector<torch::jit::IValue> inputs{t2};
 
   at::Tensor output = module.forward(inputs).toTensor();
 
-//  auto bytesop = torch::jit::pickle_save(output);
-//  std::ofstream foutop("output.zip", std::ios::out | std::ios::binary);
-//  foutop.write(bytesop.data(), bytesop.size());
-//  foutop.close();
+  auto bytes_output = torch::jit::pickle_save(output);
+  std::ofstream fout_output("output.zip", std::ios::out | std::ios::binary);
+  fout_output.write(bytes_output.data(), bytes_output.size());
+  fout_output.close();
 
-  output = output/NavierStokesBase::target_scale_factor + t1/NavierStokesBase::inp_scale_factor;
+  output = output/NavierStokesBase::target_scale_factor + t1;///NavierStokesBase::inp_scale_factor;
 
 
   if (NavierStokesBase::history){
-    at::Tensor t0 = output;
+    t_last = output;
   }
 
-//  auto bytes_op_t1 = torch::jit::pickle_save(output);
-//  std::ofstream fout_op_t1("output_plus_t1.zip", std::ios::out | std::ios::binary);
-//  fout_op_t1.write(bytes_op_t1.data(), bytes_op_t1.size());
-//  fout_op_t1.close();
+  auto bytes_output_rescaled = torch::jit::pickle_save(output);
+  std::ofstream fout_op_rescaled("output_rescaled.zip", std::ios::out | std::ios::binary);
+  fout_op_rescaled.write(bytes_output_rescaled.data(), bytes_output_rescaled.size());
+  fout_op_rescaled.close();
  // reverse the scaling
 //  output *= 10;
 
