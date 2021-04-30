@@ -242,7 +242,7 @@ public:
     static int  GodunovHypgrow () {return godunov_hyp_grow;};
 
     //////////////////////////////////////////////////////////////////
-  
+
     NavierStokesBase ();
 
     NavierStokesBase (amrex::Amr&            papa,
@@ -402,7 +402,7 @@ public:
     //
     // Average down State_Type and Press_Type.
     //
-    void avgDown_StatePress (); 
+    void avgDown_StatePress ();
 
     void LES_setDomainBC (std::array<amrex::LinOpBCType,AMREX_SPACEDIM>& mlmg_lobc,
                       std::array<amrex::LinOpBCType,AMREX_SPACEDIM>& mlmg_hibc,
@@ -481,7 +481,7 @@ public:
     //
     static void variableCleanUp ();
     //
-    // Read input file common to IAMR and PeleLM
+    // Read input file
     //
     static void Initialize ();
     //
@@ -583,11 +583,18 @@ public:
 
 #ifdef AMREX_USE_EB
 
+  //FIXME? maybe this could go into AMReX_AmrLevel.H?
+    amrex::EBFArrayBoxFactory const&
+    EBFactory () const noexcept {
+        return static_cast<amrex::EBFArrayBoxFactory const&>(*m_factory);
+    }
+
     void init_eb (const amrex::Geometry& level_geom, const amrex::BoxArray& ba, const amrex::DistributionMapping& dm);
 
     void initialize_eb2_structs();
     void define_body_state();
 
+    void InitialRedistribution ();
 
     static bool ebInitialized();
     static bool eb_initialized;
@@ -609,8 +616,8 @@ public:
 
     void set_body_state(amrex::MultiFab& S);
 
-  //fixme - don't really need to carry these around anymore....
     const amrex::MultiFab* volfrac;
+    //fixme - are these ever used?
     const amrex::MultiCutFab* bndrycent;
     amrex::FabArray<amrex::BaseFab<int>> ebmask;
 
@@ -636,7 +643,7 @@ public:
     // NOTE that DeviceVector reverts to amrex::Vector if !AMREX_USE_GPU
     amrex::Gpu::DeviceVector<amrex::BCRec> m_bcrec_velocity_d;
     amrex::Gpu::DeviceVector<amrex::BCRec> m_bcrec_scalars_d;
-  
+
     Diffusion* diffusion;
     //
     // arrays for variable viscosity and diffusivity
@@ -790,7 +797,6 @@ public:
     static int  num_state_type;
     static int  have_divu;
     static int  have_dsdt;
-    static amrex::Real divu_relax_factor;
     static int  do_init_vort_proj;
     static int  do_init_proj;
     //
@@ -807,6 +813,11 @@ public:
     // Control velocity vs momentum update
     //
     static int  do_mom_diff;
+
+    int nghost_state ();
+    int nghost_force ();
+
+
     //
     // static integer constants
     //
@@ -816,14 +827,17 @@ public:
     static const int DIVU_GROW  = 1;
     static const int DSDT_GROW  = 1;
 #ifdef AMREX_USE_EB
-    // MOL doesn't require gradp ghost cells
-    static const int gradp_grow = 0;
+    // This must be consistent with what nghost_force returns for
+    // godunov
+    static const int gradp_grow = 4;
 #else
     static const int gradp_grow = 1;
 #endif
+
     //
     // Controls Godunov solver
     //
+    static bool use_godunov;
     static bool godunov_use_ppm;
     static bool godunov_use_forces_in_trans;
 #ifdef AMREX_USE_EB
@@ -831,8 +845,14 @@ public:
 #else
     static const int  godunov_hyp_grow = 3;
 #endif
+
+#ifdef AMREX_USE_EB
+    // Controls redistribution
+    static std::string redistribution_type;
+#endif
+
   //
-  // For restart, is GradP in checkpoint file 
+  // For restart, is GradP in checkpoint file
   //
   static int gradp_in_checkpoint;
 
