@@ -102,11 +102,11 @@ std::string NavierStokesBase::fine_init_plot;
 //CUNet2d NavierStokesBase::model(inChannels,outChannels);
 //torch::optim::Adam NavierStokesBase::optim(model->parameters(), torch::optim::AdamOptions(1e-3));
 //------------------------
-//#endif
 
 
 torch::jit::script::Module NavierStokesBase::module;
 
+//#endif
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
 
@@ -442,17 +442,17 @@ NavierStokesBase::Initialize ()
     pp.query("v",verbose);
 
 //#ifdef AMREX_USE_LIBTORCH
-    pp.query("do_inference",             do_inference  );
-    if (do_inference > 0){
-      pp.query("ml_correction", ml_correction);
-      pp.query("expt_dir", expt_dir);
-      pp.query("ml_ckpt_path", ml_ckpt_path);
-      pp.query("ml_refinement_ratio", ml_refinement_ratio);
-      pp.query("inp_scale_factor", inp_scale_factor);
-      pp.query("target_scale_factor", target_scale_factor);
-      pp.query("history", history);
-      pp.query("fine_init_plot", fine_init_plot);
-    }
+  pp.query("do_inference",             do_inference  );
+  if (do_inference > 0){
+    pp.query("ml_correction", ml_correction);
+    pp.query("expt_dir", expt_dir);
+    pp.query("ml_ckpt_path", ml_ckpt_path);
+    pp.query("ml_refinement_ratio", ml_refinement_ratio);
+    pp.query("inp_scale_factor", inp_scale_factor);
+    pp.query("target_scale_factor", target_scale_factor);
+    pp.query("history", history);
+    pp.query("fine_init_plot", fine_init_plot);
+  }
 //#endif
 
     //

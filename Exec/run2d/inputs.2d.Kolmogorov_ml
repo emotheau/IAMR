@@ -79,6 +79,11 @@ ns.vel_visc_coef        = 0.001
 ns.scal_diff_coefs      = 0.0
 
 #*******************************************************************************
+# Initialize from rest with constant density = 1
+prob.probtype = 1
+ns.do_custom_forcing = 1
+
+#*******************************************************************************
 
 # Forcing term defaults to  rho * abs(gravity) "down"
 ns.gravity              = 0.0  
@@ -86,7 +91,7 @@ ns.gravity              = 0.0
 #*******************************************************************************
 
 # Name of the file which specifies problem-specific parameters (defaults to "probin")
-amr.probin_file 	= probin.2d.lid_driven_cavity  
+#amr.probin_file 	= probin.2d.lid_driven_cavity  
 
 #*******************************************************************************
 
