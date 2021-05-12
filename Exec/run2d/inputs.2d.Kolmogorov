@@ -47,7 +47,7 @@ amr.v                   = 1
 # interval (in sim time) between checkpoint files
 #amr.check_per = 0.1
 #amr.restart = chk05000
-amr.check_int		= 1000
+#amr.check_int		= 1000
 #amr.restart = chk20000
 #*******************************************************************************
 

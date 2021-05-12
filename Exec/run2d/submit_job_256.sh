@@ -2,17 +2,16 @@
 
 #SBATCH --qos=regular
 #SBATCH --time=04:00:00
-#SBATCH --nodes=4
+#SBATCH --nodes=2
 #SBATCH --tasks-per-node=64
 #SBATCH --constraint=haswell
 
-res=2048
+res=256
 chain_num_current=$1
 chain_num_next=$(($1+1))
 EXECDIR='/project/projectdirs/dasrepo/jpathak/IAMR-EM/Exec/run2d'
 OUTPUTDIR_prev='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/data/'$res/$chain_num_current
 OUTPUTDIR_next='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/data/'$res/$chain_num_next
-#OUTPUTDIR_next='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/data/'$res/'temp'
 
 mkdir -p $OUTPUTDIR_next
 
@@ -22,7 +21,7 @@ echo $OUTPUTDIR_prev
 echo $OUTPUTDIR_next
 rm -r $OUTPUTDIR_prev/*.temp
 #TODO the regex is not reliable especially when the timestep iter crosses 99999. until it is fixed be careful in specifying num in [0-9]{num,}
-latest_checkpoint=$(find $OUTPUTDIR_prev -maxdepth 1 -print | grep -E 'truth[0-9]{6,}' | sort -r | head -1) 
+latest_checkpoint=$(find $OUTPUTDIR_prev -maxdepth 1 -print | grep -E 'truth[0-9]{7,}' | sort -r | head -1) 
 echo $latest_checkpoint
 
 RESTART=/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/restartdir/$res
@@ -31,4 +30,4 @@ cp -TR $latest_checkpoint $RESTART/latest_checkpoint
 
 echo | ls $RESTART/latest_checkpoint
 
-srun -n 256 $EXECDIR/amr2d.gnu.haswell.MPI.ex $INPUTDIR/inputs.2d.Kolmogorov amr.check_file=$OUTPUTDIR_next/truth amr.restart=$RESTART/latest_checkpoint amr.check_per=0.1 amr.n_cell= $res $res amr.v=0 ns.v=0
+srun -n 128 $EXECDIR/amr2d.gnu.haswell.MPI.ex $INPUTDIR/inputs.2d.Kolmogorov amr.check_file=$OUTPUTDIR_next/truth amr.restart=$RESTART/latest_checkpoint amr.check_per=0.1 amr.n_cell= $res $res amr.v=0 ns.v=0

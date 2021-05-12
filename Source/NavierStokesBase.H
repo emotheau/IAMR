@@ -26,11 +26,11 @@
 #include <AMReX_EBFluxRegister.H>
 #endif
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
 #include <torch/script.h> // One-stop header.
 //#include "cunet.h"
-//#endif
+#endif
 
 //
 // "Divu_Type" means S, where divergence U = S
@@ -212,7 +212,7 @@ public:
     void calc_mut_LES(amrex::MultiFab*  diffusivity[BL_SPACEDIM], amrex::Real time);
 
     void time_average(amrex::Real& time_avg, amrex::Real& time_avg_fluct, amrex::Real& dt_avg, const amrex::Real& dt_level);
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
     // Stuff related to Deep Learning with PyTorch
     void apply_correction();
     void no_ml_baseline();
@@ -233,7 +233,7 @@ public:
     static torch::jit::script::Module module;
     static torch::Tensor t_last;
     static std::string fine_init_plot;
-//#endif
+#endif
 
 
     ////////////////////////////////////////////////////////////////////////////

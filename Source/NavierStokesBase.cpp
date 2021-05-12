@@ -26,11 +26,11 @@
 #include<AMReX_PlotFileUtil.H>
 
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
 #include <torch/torch.h>
 #include <torch/script.h> // One-stop header.
 //#include "cunet.h"
-//#endif
+#endif
 
 
 using namespace amrex;
@@ -85,7 +85,7 @@ int  NavierStokesBase::NUM_SCALARS = 0;
 int  NavierStokesBase::NUM_STATE   = 0;
 
 // ML related stuff below
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
 Real NavierStokesBase::sim_start_time = 0;
 int NavierStokesBase::ml_correction_iter = 1;
 std::string NavierStokesBase::expt_dir = ""; 
@@ -106,7 +106,7 @@ std::string NavierStokesBase::fine_init_plot;
 
 torch::jit::script::Module NavierStokesBase::module;
 
-//#endif
+#endif
 Vector<AdvectionForm> NavierStokesBase::advectionType;
 Vector<DiffusionForm> NavierStokesBase::diffusionType;
 
@@ -441,7 +441,7 @@ NavierStokesBase::Initialize ()
 
     pp.query("v",verbose);
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
   pp.query("do_inference",             do_inference  );
   if (do_inference > 0){
     pp.query("ml_correction", ml_correction);
@@ -453,7 +453,7 @@ NavierStokesBase::Initialize ()
     pp.query("history", history);
     pp.query("fine_init_plot", fine_init_plot);
   }
-//#endif
+#endif
 
     //
     // Get timestepping parameters.
@@ -2381,7 +2381,7 @@ NavierStokesBase::post_restart ()
     make_rho_prev_time();
     make_rho_curr_time();
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
   if ( do_inference > 0){
     NavierStokesBase::sim_start_time = state[State_Type].curTime();
     amrex::Print() << "sim start time" << NavierStokesBase::sim_start_time;
@@ -2401,7 +2401,7 @@ NavierStokesBase::post_restart ()
 
     }
   }
-//#endif
+#endif
 
   if (avg_interval > 0){
 
@@ -2567,7 +2567,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
       time_average(time_avg[level], time_avg_fluct[level], dt_avg[level], dt_level);
     }
 
-//#ifdef AMREX_USE_LIBTORCH
+#ifdef AMREX_USE_LIBTORCH
 
   if ( do_inference > 0){
 
@@ -2593,7 +2593,7 @@ NavierStokesBase::post_timestep (int crse_iteration)
     }
   }
 
-//#endif
+#endif
 
 }
 

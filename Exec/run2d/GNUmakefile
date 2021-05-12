@@ -20,7 +20,7 @@ PROFILE     = FALSE
 
 USE_CUDA = FALSE
 
-USE_LIBTORCH = TRUE
+USE_LIBTORCH = FALSE
 LIBTORCH_DIR =	/global/cscratch1/sd/jpathak/libtorch
 
 USE_SENSEI_INSITU = FALSE

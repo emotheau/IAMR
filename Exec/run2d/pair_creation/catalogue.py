@@ -34,7 +34,7 @@ def getTimestampedDictX(dirpath):
     timestamped_dict = OrderedDict()
     for ii, plotfile in enumerate(dirlist):
         if ii % 1000 ==0:
-            print(ii)
+             print(ii)
         plotfilepath = os.path.join(dirpath, plotfile)
         ds = yt.load(plotfilepath)
         time = round(float(ds.current_time), 1)
@@ -43,51 +43,58 @@ def getTimestampedDictX(dirpath):
     timestamped_dict = OrderedDict(sorted_d)
     return(timestamped_dict)
    
+idx_list = [0, 3, 4, 5, 6, 7]
 
-
-idx = str(sys.argv[1])
-
-basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/256/ur8/' + idx   #'/project/projectdirs/dasrepo/jpathak/iamr_data/ldc/case0a'
-
-X_dir = basedir + '/plots'
-X_tilde_dir = basedir + '/refined_plots'
-#h5dir = '/global/cscratch1/sd/jpathak/iamr_training_pairs/kolmogorov/256/'
-
-#if not os.path.exists(h5dir):
-#    os.makedirs(h5dir)
-#train_file = os.path.join(h5dir, 'training_pairs.h5')
+#idx = str(sys.argv[1])
 res = 256
-
-X_dict= getTimestampedDictX(X_dir)
-X_tilde_dict = getTimestampedDictXtilde(X_tilde_dir)
-def dict_to_csv(odict_object, filename):
+ur = 4
+for idx in idx_list:
     
-    keys, values = [], []
+    basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/'+ str(res) + '/ur' + str(ur) + '/' + str(idx) 
     
-    for key, value in odict_object.items():
-        keys.append(key)
-        values.append(value)
+    X_dir = basedir + '/plots'
+    X_tilde_dir = basedir + '/refined_plots'
+    X_tilde_lr_dir = basedir + '/tilde_plots'
+    catalogdir = basedir + '/csv/'
     
-    with open(filename + ".csv", "w") as outfile:
-        csvwriter = csv.writer(outfile)
-        csvwriter.writerow(keys)
-        csvwriter.writerow(values)
-
-def csv_to_dict(filename):
-    file = open(filename, mode='r')
-    odict = OrderedDict()
-    csvReader = csv.reader(file)
-    keys = next(csvReader)
-    values = next(csvReader)
-    for key, value in zip(keys, values):
-        odict[key] = value
-    return(odict)
-
-
-dict_to_csv(X_dict, "X_dict_ur8" + idx )
-dict_to_csv(X_tilde_dict, "X_tilde_dict_ur8" + idx)
-
-#X_dict = csv_to_dict("X_dict.csv")
-#X_tilde_dict = csv_to_dict("X_tilde_dict.csv")
-
-
+    if not os.path.exists(catalogdir):
+        os.makedirs(catalogdir)
+    
+    X_dict= getTimestampedDictX(X_dir)
+    X_tilde_dict = getTimestampedDictXtilde(X_tilde_dir)
+    X_tilde_lr_dict = getTimestampedDictX(X_tilde_lr_dir)
+    
+    X_dict_name = catalogdir + "X_dict_" + str(res) + "ur" + str(ur) + "_" + str(idx)
+    X_tilde_dict_name = catalogdir + "X_tilde_dict_" + str(res) + "ur" + str(ur) + "_" + str(idx)
+    X_tilde_lr_dict_name = catalogdir + "X_tilde_dict_lr_" + str(res) + "ur" + str(ur) + "_" + str(idx)
+    
+    def dict_to_csv(odict_object, filename):
+        
+        keys, values = [], []
+        
+        for key, value in odict_object.items():
+            keys.append(key)
+            values.append(value)
+        
+        with open(filename + ".csv", "w") as outfile:
+            csvwriter = csv.writer(outfile)
+            csvwriter.writerow(keys)
+            csvwriter.writerow(values)
+    
+    def csv_to_dict(filename):
+        file = open(filename, mode='r')
+        odict = OrderedDict()
+        csvReader = csv.reader(file)
+        keys = next(csvReader)
+        values = next(csvReader)
+        for key, value in zip(keys, values):
+            odict[key] = value
+        return(odict)
+    
+    
+    dict_to_csv(X_dict, X_dict_name)
+    dict_to_csv(X_tilde_dict, X_tilde_dict_name)
+    dict_to_csv(X_tilde_lr_dict, X_tilde_lr_dict_name)
+    
+    
+    
