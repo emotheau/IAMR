@@ -1,8 +1,8 @@
 #!/bin/bash -l
 
 
-exec_AugmentPlotfile='AugmentPlotfile3d.gnu.MPI.ex'
-exec_DeriveSpectrum='AmrDeriveSpectrum3d.gnu.MPI.ex'
+exec_AugmentPlotfile='AugmentPlotfile3d.gnu.haswell.MPI.ex'
+exec_DeriveSpectrum='AmrDeriveSpectrum3d.gnu.haswell.MPI.ex'
 
 # Check Needed Files are in Current Directory
 reqfiles_ascii='yt_post_scrape_tseries.py yt_post_scrape_common.py yt_post_scrape_slice.py yt_post_scrape_common.py spectra.py derivespect-inputs '
@@ -25,10 +25,10 @@ else
 fi
 
 
-nprocs=4
+nprocs=1
 folder=$1
 tmpfname='tmp_plotfile'
-run="mpirun -n $nprocs"
+run="srun -n $nprocs"
 pyrun="$run python"
 
 

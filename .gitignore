@@ -25,3 +25,9 @@ truth
 *.ipynb
 baselineHR
 *chk*
+*.png
+*.h5
+*.dat
+Exec/HIT/tmp_build_dir/
+*tmp_build_dir/
+*ANALYSIS/
