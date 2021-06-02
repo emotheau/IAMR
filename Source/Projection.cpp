@@ -643,6 +643,13 @@ Projection::initialVelocityProject (int  c_lev,
     int f_lev = parent->finestLevel();
 
     if ( init_vel_iter <= 0 ){
+      // Make sure P_old is initialized
+      for (lev = c_lev; lev <= f_lev; lev++)
+      {
+            LevelData[lev]->get_old_data(Press_Type).setVal(0.);
+            LevelData[lev]->get_old_data(Gradp_Type).setVal(0.);
+      }
+      
       if ( verbose ) Print()<<"Returning from initalVelocityProject() without projecting because init_vel_iter<=0\n";
       return;
     }
@@ -1718,7 +1725,7 @@ Projection::putDown (const Vector<MultiFab*>& phi,
                     });
                 }
             }
-            phi[lev]->copy(phi_crse_strip);
+            phi[lev]->ParallelCopy(phi_crse_strip);
         }
     }
 }
@@ -1934,7 +1941,7 @@ Projection::set_outflow_bcs_at_level (int          which_call,
           });
         }
 
-        phi[lev]->copy(phi_fine_strip_mf);
+        phi[lev]->ParallelCopy(phi_fine_strip_mf);
     }
 
     if (lev > c_lev)

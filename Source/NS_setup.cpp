@@ -11,6 +11,7 @@ using namespace amrex;
 
 static Box the_same_box (const Box& b)    { return b;                 }
 static Box grow_box_by_one (const Box& b) { return amrex::grow(b,1); }
+static Box grow_box_by_two (const Box& b) { return amrex::grow(b,2); }
 
 // NOTE: the int arrays that define the mapping from physical BCs to mathematical
 // (norm_vel_bc, tang_vel_bc, scalar_bc, temp_bc, press_bc, divu_bc, dsdt_bc)
@@ -109,8 +110,8 @@ set_pressure_bc (BCRec&       bc,
     }
 }
 
-static 
-void 
+static
+void
 set_gradpx_bc (BCRec&       bc,
 	       const BCRec& phys_bc)
 {
@@ -160,26 +161,26 @@ set_gradpz_bc (BCRec&       bc,
 }
 #endif
 
-static 
-void 
+static
+void
 set_divu_bc(BCRec& bc, const BCRec& phys_bc)
 {
     const int* lo_bc = phys_bc.lo();
     const int* hi_bc = phys_bc.hi();
-    for (int i = 0; i < BL_SPACEDIM; i++) 
+    for (int i = 0; i < BL_SPACEDIM; i++)
     {
         bc.setLo(i,divu_bc[lo_bc[i]]);
         bc.setHi(i,divu_bc[hi_bc[i]]);
     }
 }
 
-static 
-void 
+static
+void
 set_dsdt_bc(BCRec& bc, const BCRec& phys_bc)
 {
     const int* lo_bc = phys_bc.lo();
     const int* hi_bc = phys_bc.hi();
-    for (int i = 0; i < BL_SPACEDIM; i++) 
+    for (int i = 0; i < BL_SPACEDIM; i++)
     {
         bc.setLo(i,dsdt_bc[lo_bc[i]]);
         bc.setHi(i,dsdt_bc[hi_bc[i]]);
@@ -205,7 +206,7 @@ typedef StateDescriptor::BndryFunc BndryFunc;
 //
 // Get EB-aware interpolater when needed
 //
-#ifdef AMREX_USE_EB  
+#ifdef AMREX_USE_EB
   static auto& cc_interp = eb_cell_cons_interp;
 #else
   static auto& cc_interp = cell_cons_interp;
@@ -223,11 +224,11 @@ NavierStokes::variableSetUp ()
     // Set number of state variables.
     //
     NUM_STATE = Density + 1;
-    int Trac = NUM_STATE++;
-    int Trac2;
+    Tracer = NUM_STATE++;
     if (do_trac2)
-	Trac2 = NUM_STATE++;
-    if (do_temp) NUM_STATE++;
+        Tracer2 = NUM_STATE++;
+    if (do_temp)
+        Temp = NUM_STATE++;
     NUM_SCALARS = NUM_STATE - Density;
 
     if (do_scalar_update_in_order) {
@@ -286,12 +287,12 @@ NavierStokes::variableSetUp ()
     desc_lst.setComponent(State_Type,Density,"density",bc,state_bf);
 
     set_scalar_bc(bc,phys_bc);
-    desc_lst.setComponent(State_Type,Trac,"tracer",bc,state_bf);
+    desc_lst.setComponent(State_Type,Tracer,"tracer",bc,state_bf);
 
     if (do_trac2)
     {
        set_scalar_bc(bc,phys_bc);
-       desc_lst.setComponent(State_Type,Trac2,"tracer2",bc,state_bf);
+       desc_lst.setComponent(State_Type,Tracer2,"tracer2",bc,state_bf);
     }
     //
     // **************  DEFINE TEMPERATURE  ********************
@@ -321,19 +322,19 @@ NavierStokes::variableSetUp ()
     advectionType[Density] = Conservative;
     if (do_temp) advectionType[Temp] = NonConservative;
 
-    advectionType[Trac] = NonConservative;
-    diffusionType[Trac] = Laplacian_S; if (do_cons_trac) {
-      advectionType[Trac] = Conservative;
-      diffusionType[Trac] = Laplacian_SoverRho;
+    advectionType[Tracer] = NonConservative;
+    diffusionType[Tracer] = Laplacian_S; if (do_cons_trac) {
+      advectionType[Tracer] = Conservative;
+      diffusionType[Tracer] = Laplacian_SoverRho;
       amrex::Print() << "Using conservative advection update for tracer.\n";
     }
 
     if (do_trac2) {
-	advectionType[Trac2] = NonConservative;
-	diffusionType[Trac2] = Laplacian_S;
+	advectionType[Tracer2] = NonConservative;
+	diffusionType[Tracer2] = Laplacian_S;
 	if (do_cons_trac2) {
-	  advectionType[Trac2] = Conservative;
-	  diffusionType[Trac2] = Laplacian_SoverRho;
+	  advectionType[Tracer2] = Conservative;
+	  diffusionType[Tracer2] = Laplacian_SoverRho;
 	  amrex::Print() << "Using conservative advection update for tracer2.\n";
 	}
     }
@@ -351,7 +352,7 @@ NavierStokes::variableSetUp ()
 
     set_pressure_bc(bc,phys_bc);
     desc_lst.setComponent(Press_Type,Pressure,"pressure",bc,press_bf);
- 
+
     //
     // ---- grad P
     //
@@ -369,11 +370,11 @@ NavierStokes::variableSetUp ()
     set_gradpx_bc(bc,phys_bc);
     bcs[0]  = bc;
     name[0] = "gradpx";
-    
+
     set_gradpy_bc(bc,phys_bc);
     bcs[1]  = bc;
     name[1] = "gradpy";
-    
+
 #if(AMREX_SPACEDIM==3)
     set_gradpz_bc(bc,phys_bc);
     bcs[2]  = bc;
@@ -395,7 +396,7 @@ NavierStokes::variableSetUp ()
 			       &cc_interp);
 	set_divu_bc(bc,phys_bc);
 	desc_lst.setComponent(Divu_Type,Divu,"divu",bc,null_bf);
-	
+
 	// stick Dsdt_Type on the end of the descriptor list
 	Dsdt_Type = desc_lst.size();
 	int nGrowDsdt = 0;
@@ -464,7 +465,7 @@ NavierStokes::variableSetUp ()
     //
     // magnitude of vorticity
     //
-    derive_lst.add("mag_vort",IndexType::TheCellType(),1,dermgvort,grow_box_by_one);
+    derive_lst.add("mag_vort",IndexType::TheCellType(),1,dermgvort,grow_box_by_two);
     derive_lst.addComponent("mag_vort",desc_lst,State_Type,Xvel,BL_SPACEDIM);
     //
     // average pressure
