@@ -1446,7 +1446,7 @@ NavierStokesBase::estTimeStep ()
            amrex::Print() << "---" << '\n'
                           << "H - est Time Step:" << '\n'
                           << "Calling getForce..." << '\n';
-       getForce(tforces_fab,bx,0,AMREX_SPACEDIM,cur_time,S_new[mfi],S_new[mfi],Density);
+       getForce(tforces_fab,bx,0,0,AMREX_SPACEDIM,cur_time,S_new[mfi],S_new[mfi],Density);
 
        const auto& rho   = rho_ctime.array(mfi);  
        const auto& gradp = Gp.array(mfi); 
@@ -2978,7 +2978,7 @@ NavierStokesBase::scalar_advection_update (Real dt,
 
                if (getForceVerbose) amrex::Print() << "Calling getForce..." << '\n';
                tforces.resize(bx,1);
-               getForce(tforces,bx,sigma,1,halftime,Vel_fab,Scal,0);
+               getForce(tforces,bx,0,sigma,1,halftime,Vel_fab,Scal,0);
 
 	       const auto& Snew = S_new[Rho_mfi].array(sigma);
 	       const auto& Sold = S_old[Rho_mfi].const_array(sigma);
@@ -3554,7 +3554,7 @@ NavierStokesBase::velocity_advection (Real dt)
                                    << "B - velocity advection:" << '\n'
                                    << "Calling getForce..." << '\n';
                 }
-                getForce(forcing_term[U_mfi],gbx,Xvel,AMREX_SPACEDIM,
+                getForce(forcing_term[U_mfi],gbx,ngrow,Xvel,AMREX_SPACEDIM,
 			 prev_time,Umf[U_mfi],Smf[U_mfi],0);
 
                 //
@@ -3785,7 +3785,7 @@ NavierStokesBase::velocity_advection_update (Real dt)
         const Real half_time = 0.5*(state[State_Type].prevTime()+state[State_Type].curTime());
         tforces.resize(bx,AMREX_SPACEDIM);
         Elixir tf_i = tforces.elixir();
-        getForce(tforces,bx,Xvel,AMREX_SPACEDIM,half_time,VelFAB,ScalFAB,0);
+        getForce(tforces,bx,0,Xvel,AMREX_SPACEDIM,half_time,VelFAB,ScalFAB,0);
 
         //
         // Do following only at initial iteration--per JBB.
@@ -3897,7 +3897,7 @@ NavierStokesBase::initial_velocity_diffusion_update (Real dt)
                                << "G - initial velocity diffusion update:" << '\n'
                                << "Calling getForce..." << '\n';
             }
-            getForce(tforces_fab,bx,Xvel,AMREX_SPACEDIM,prev_time,U_old[mfi],U_old[mfi],Density);
+            getForce(tforces_fab,bx,0,Xvel,AMREX_SPACEDIM,prev_time,U_old[mfi],U_old[mfi],Density);
         }
 
         //
@@ -4798,7 +4798,7 @@ NavierStokesBase::predict_velocity (Real  dt)
                 Print() << "---\nA - Predict velocity:\n Calling getForce...\n";
             }
 
-            getForce(forcing_term[U_mfi],gbx,Xvel,AMREX_SPACEDIM,prev_time,Ufab,Smf[U_mfi],0);
+            getForce(forcing_term[U_mfi],gbx,ngrow,Xvel,AMREX_SPACEDIM,prev_time,Ufab,Smf[U_mfi],0);
 
             //
             // Compute the total forcing.

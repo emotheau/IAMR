@@ -250,6 +250,7 @@ public:
     //
     virtual void getForce (amrex::FArrayBox&       force,
                            const amrex::Box&       bx,
+                           int              ngrow,
                            int                     strt_comp,
                            int                     num_comp,
                            const amrex::Real       time,

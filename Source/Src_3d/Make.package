@@ -11,3 +11,5 @@ endif
 
 F90EXE_sources +=   NAVIERSTOKES_$(DIM)D.F90 PROJECTION_$(DIM)D.F90 \
                     MACPROJ_$(DIM)D.F90
+
+F90EXE_sources += MAKEFORCE_$(DIM)D.F90
