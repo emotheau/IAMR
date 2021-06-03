@@ -2112,9 +2112,9 @@ contains
 !c                  vel(i,j,k,3) = cos(twicePi*x)*cos(twicePi*y)
 !c               endif
 
-!c               vel(i,j,k,1) = zero
-!c               vel(i,j,k,2) = zero
-!c               vel(i,j,k,3) = zero
+               vel(i,j,k,1) = zero
+               vel(i,j,k,2) = zero
+               vel(i,j,k,3) = zero
                
                if (rhozero.gt.zero) then 
                   scal(i,j,k,1) = rhozero
