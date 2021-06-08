@@ -1,3 +1,3 @@
 #!/bin/bash
 
-for i in {4..20};do sbatch --dependency=singleton --job-name=generate_data submit_job.sh $i; done
+for i in {8..20};do sbatch --dependency=singleton --job-name=generate_data_256 submit_job_256.sh $i; done

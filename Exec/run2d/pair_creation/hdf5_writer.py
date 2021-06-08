@@ -32,30 +32,28 @@ def csv_to_dict(filename):
         odict[key] = value
     return(odict)
 
-chunk_size = 1000
 
 ii = int(sys.argv[1])
 
+chunk_size = int(sys.argv[2])
 startidx = chunk_size*ii
 endidx = chunk_size*(ii+1)
 
-idx = int(sys.argv[2])
+idx = int(sys.argv[3])
 
-
-res = 256
-user_ratio = 4
+history = False
+res = 2048
+user_ratio = 16
 
 basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/' + str(res) + '/' + 'ur' + str(user_ratio) + '/' + str(idx)  
 csv_dir = basedir + '/csv/'
 print(csv_dir)
 X_dict = csv_to_dict(csv_dir + "X_dict_"+ str(res) +  "ur" + str(user_ratio) + '_' + str(idx) + ".csv")
 X_tilde_dict = csv_to_dict(csv_dir + "X_tilde_dict_"+ str(res) +  "ur" + str(user_ratio) + '_' +str(idx) + ".csv" )
-X_tilde_lr_dict = csv_to_dict(csv_dir +  "X_tilde_dict_lr_" + str(res) +  "ur" + str(user_ratio) + '_' +str(idx) + ".csv") 
 
 X_dir = basedir + '/plots'
 X_tilde_dir = basedir + '/refined_plots'
-X_tilde_lr_dir = basedir + '/tilde_plots'
-h5dir = '/global/cscratch1/sd/jpathak/iamr_training_pairs/kolmogorov/'+ str(res) + '/ur' + str(user_ratio) + '/h5_multilevel_with_history/'
+h5dir = '/global/cscratch1/sd/jpathak/iamr_training_pairs/kolmogorov/'+ str(res) + '/ur' + str(user_ratio) + '/h5_history/'
 
 if ii == 0:
     if not os.path.exists(h5dir):
@@ -68,8 +66,10 @@ fields_list = ['x_velocity', 'y_velocity']
 num_X = len(list(X_dict.keys()))
 
 X_array = np.zeros((chunk_size, 2, res, res))
-X_tilde_array = np.zeros((chunk_size, 4, res, res))
-X_tilde_lr_array = np.zeros((chunk_size, 2, res//user_ratio, res//user_ratio))
+if history == True:
+    X_tilde_array = np.zeros((chunk_size, 4, res, res))
+else:
+    X_tilde_array = np.zeros((chunk_size, 2, res, res))
 arr_iter = 0
 for dictidx in range(startidx, endidx):
     tilde_filename = list(X_tilde_dict.keys())[dictidx]
@@ -78,7 +78,7 @@ for dictidx in range(startidx, endidx):
     X_tilde_path = os.path.join(X_tilde_dir, tilde_filename)
     ds_X_tilde = yt.load(X_tilde_path)
     ad_X_tilde = ds_X_tilde.all_data()
-    if (tilde_time in X_dict) and (t_minus_time in X_dict) and (tilde_time in X_tilde_lr_dict):
+    if (tilde_time in X_dict) and (t_minus_time in X_dict):
         X_tilde_array[arr_iter,0:2, :,:] = np.stack( (np.reshape( ad_X_tilde['x_velocity'] , (res, res)) , np.reshape(  ad_X_tilde['y_velocity'], (res, res) ) ) , axis = 0  ).astype(np.float32)
         X_filename = X_dict[tilde_time]    
         tilde_time_from_file = round(float(ds_X_tilde.current_time), 1)
@@ -86,24 +86,18 @@ for dictidx in range(startidx, endidx):
         ds_X = yt.load(X_path)
         ad_X = ds_X.all_data()
         X_array[arr_iter,:,:,:] = np.stack( (np.reshape( ad_X['x_velocity'] , (res, res)) , np.reshape(  ad_X['y_velocity'], (res, res) ) ) , axis = 0  ).astype(np.float32)
-        X_minus_filename = X_dict[t_minus_time]
-        X_minus_path = os.path.join(X_dir, X_minus_filename)
-        ds_X_minus = yt.load(X_minus_path)
-        ad_X_minus = ds_X_minus.all_data()
-        X_tilde_array[arr_iter,2:4,:,:] = np.stack( (np.reshape( ad_X_minus['x_velocity'] , (res, res)) , np.reshape(  ad_X_minus['y_velocity'], (res, res) ) ) , axis = 0  ).astype(np.float32)
-
-        X_tilde_lr_filename = X_tilde_lr_dict[tilde_time]
-        X_tilde_lr_path = os.path.join(X_tilde_lr_dir, X_tilde_lr_filename)
-        ds_X_tilde_lr = yt.load(X_tilde_lr_path)
-        ad_X_tilde_lr = ds_X_tilde_lr.all_data()
-        X_tilde_lr_array[arr_iter, :, :, :] = np.stack( (np.reshape( ad_X_tilde_lr['x_velocity'] , (res//user_ratio, res//user_ratio)) , np.reshape(  ad_X_tilde_lr['y_velocity'], (res//user_ratio, res//user_ratio) ) ) , axis = 0  ).astype(np.float32)
-
+        if history == True:
+            X_minus_filename = X_dict[t_minus_time]
+            X_minus_path = os.path.join(X_dir, X_minus_filename)
+            ds_X_minus = yt.load(X_minus_path)
+            ad_X_minus = ds_X_minus.all_data()
+            X_tilde_array[arr_iter,2:4,:,:] = np.stack( (np.reshape( ad_X_minus['x_velocity'] , (res, res)) , np.reshape(  ad_X_minus['y_velocity'], (res, res) ) ) , axis = 0  ).astype(np.float32)
         arr_iter += 1
+
 print("valid_pairs=", arr_iter)
 with h5py.File(train_file, 'w') as f:
     f.create_dataset('fields', data = X_array[0:arr_iter,:,:,:].astype(np.float32))
     f.create_dataset('fields_tilde', data = X_tilde_array[0:arr_iter,:,:,:].astype(np.float32))
-    f.create_dataset('fields_tilde_lr', data = X_tilde_lr_array[0:arr_iter,:,:,:].astype(np.float32))
     f.flush()
 
 

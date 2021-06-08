@@ -43,18 +43,18 @@ def getTimestampedDictX(dirpath):
     timestamped_dict = OrderedDict(sorted_d)
     return(timestamped_dict)
    
-idx_list = [0, 3, 4, 5, 6, 7]
+idx_list = [0, 1, 2,3,4,5,6,7,8, 9, 10, 11, 12, 13, 14, 15]
 
 #idx = str(sys.argv[1])
-res = 256
-ur = 4
+res = 2048
+ur = 16
 for idx in idx_list:
     
     basedir ='/project/projectdirs/dasrepo/jpathak/iamr_expts/kolmogorov/processed_files/'+ str(res) + '/ur' + str(ur) + '/' + str(idx) 
     
     X_dir = basedir + '/plots'
     X_tilde_dir = basedir + '/refined_plots'
-    X_tilde_lr_dir = basedir + '/tilde_plots'
+#    X_tilde_lr_dir = basedir + '/tilde_plots'
     catalogdir = basedir + '/csv/'
     
     if not os.path.exists(catalogdir):
@@ -62,11 +62,11 @@ for idx in idx_list:
     
     X_dict= getTimestampedDictX(X_dir)
     X_tilde_dict = getTimestampedDictXtilde(X_tilde_dir)
-    X_tilde_lr_dict = getTimestampedDictX(X_tilde_lr_dir)
+#    X_tilde_lr_dict = getTimestampedDictX(X_tilde_lr_dir)
     
     X_dict_name = catalogdir + "X_dict_" + str(res) + "ur" + str(ur) + "_" + str(idx)
     X_tilde_dict_name = catalogdir + "X_tilde_dict_" + str(res) + "ur" + str(ur) + "_" + str(idx)
-    X_tilde_lr_dict_name = catalogdir + "X_tilde_dict_lr_" + str(res) + "ur" + str(ur) + "_" + str(idx)
+#    X_tilde_lr_dict_name = catalogdir + "X_tilde_dict_lr_" + str(res) + "ur" + str(ur) + "_" + str(idx)
     
     def dict_to_csv(odict_object, filename):
         
@@ -94,7 +94,7 @@ for idx in idx_list:
     
     dict_to_csv(X_dict, X_dict_name)
     dict_to_csv(X_tilde_dict, X_tilde_dict_name)
-    dict_to_csv(X_tilde_lr_dict, X_tilde_lr_dict_name)
+#    dict_to_csv(X_tilde_lr_dict, X_tilde_lr_dict_name)
     
     
     
